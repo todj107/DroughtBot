@@ -24,8 +24,4 @@ void loop() {
     Serial.println("Stopping");
     pump.stop();
     delay(5000);
-
-
-
-
 }
