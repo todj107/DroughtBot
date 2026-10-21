@@ -2,7 +2,7 @@
 #include "pump_controller.h"
 
 // Create a PumpController object named "pump" connected to GIPO pin 9
-PumpController pump(9);
+PumpController pump(2);
 
 void setup() {
     Serial.begin(115200);
