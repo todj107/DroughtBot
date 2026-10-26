@@ -19,3 +19,23 @@ and
 PumpController
 ```
 Their header files are defined in `include`.
+
+
+## scale_pump_stabilizer
+
+Same as demo_scale_pump except that a scale stabilizer is used sush that the readings are more stable and less sensitive to noise.
+
+### Code structure
+
+The code uses two classes
+```cpp
+ScaleController
+```
+and
+```cpp
+PumpController
+```
+Where `ScaleController` uses `ScaleStabilizer` internally. Their header files are defined in `include`.
+
+### Comment
+This code works very well and have an error of approximately 0.1g when I have tried. 
