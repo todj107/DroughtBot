@@ -39,3 +39,9 @@ Where `ScaleController` uses `ScaleStabilizer` internally. Their header files ar
 
 ### Comment
 This code works very well and have an error of approximately 0.1g when I have tried. 
+
+
+## Pump efficiency
+
+- 5V: 40ml water in 60s
+- 6V: 40ml water in 49s
