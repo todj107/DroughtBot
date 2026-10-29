@@ -9,6 +9,7 @@
  * @brief Something is wrong that a retry might fix 
  * (bad ribbon seating, WiFi down...).
  * @param what Description of what went wrong.
+ * @note [[noretrun]] specifies that the program will never leave the function.
  */
 [[noreturn]] void restartAfterError(const char* what) {
   Serial.printf("[main] %s - restarting in 5 s\n", what);
