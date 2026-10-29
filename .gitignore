@@ -291,3 +291,4 @@ Testing/
 .cache/
 
 .pio/
+secrets.h
