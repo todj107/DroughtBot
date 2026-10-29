@@ -289,3 +289,8 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+.pio/
+.vscode/
+lib/
+secrets.h
