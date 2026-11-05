@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include "app_config.h"
 #include "camera.h"
+#include "SpotlightController.h"
+
+SpotlightController light;
 
 /**
  * @brief Something is wrong that a retry might fix.
@@ -38,11 +41,19 @@ void setup() {
     restart_after_error("Camera init failed");
   }
 
+  light.begin(43);
+
   // Discard first images
   warm_up((uint8_t)3);
 
-  // Take a picture (with flash?)
+  // Flash
+  light.on();
+  delay(500);
+  // Take a picture
   camera_fb_t* fb = esp_camera_fb_get();
+  delay(500);
+  // Flash off
+  light.off();
   
   // Send the image
   // ADD CODE
@@ -61,6 +72,5 @@ void setup() {
 
 // Unused (if deep_sleep is used)
 void loop() {
-  // All work happens in the HTTP server tasks.
   delay(10000);
 }

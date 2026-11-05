@@ -4,6 +4,9 @@
 #include "camera.h"
 #include "web_server.h"
 #include "wifi_link.h"
+#include "SpotlightController.h"
+
+SpotlightController light;
 
 /**
  * @brief Something is wrong that a retry might fix 
@@ -19,7 +22,11 @@
 }
 
 void take_picture(){
+  light.on();
+  delay(500);
   camera_fb_t* fb = esp_camera_fb_get();
+  delay(500);
+  light.off();
   if (fb != nullptr) {
     web_server::publish(fb->buf, fb->len);  // show it on the web page
     esp_camera_fb_return(fb);
@@ -34,6 +41,7 @@ void setup() {
   if (!camera::begin()) {
     restartAfterError("Camera init failed");
   }
+  light.begin(43);
   if (!wifi_link::connect()) {
     restartAfterError("WiFi connection failed");
   }
@@ -53,7 +61,6 @@ void setup() {
 }
 
 void loop() {
-  // All work happens in the HTTP server tasks.
   take_picture();
   delay(10000);
 }
