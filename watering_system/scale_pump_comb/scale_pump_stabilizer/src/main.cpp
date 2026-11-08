@@ -9,6 +9,8 @@ float run(float stop);
 
 void setup() {
     Serial.begin(115200);
+    delay(2000);
+    Serial.println("hello world");
     scale.begin(6, 5, 0.3f);
     pump.begin();
 

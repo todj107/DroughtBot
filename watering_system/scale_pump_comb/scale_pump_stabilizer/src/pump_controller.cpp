@@ -6,11 +6,27 @@ PumpController::PumpController(uint8_t pin){
 }
 
 
+// void PumpController::begin() {
+//     Serial.println("Hello");
+//     ESP32PWM::allocateTimer(0);
+//     pumpServo.setPeriodHertz(50);
+//     pumpServo.writeMicroseconds(1500); // Make sure pump starts in STOP state
+//     pumpServo.attach(pumpPin, 500, 2500);
+//     Serial.println("PUMP Initialized and ready.");
+// }
+
 void PumpController::begin() {
-    ESP32PWM::allocateTimer(0);
+    Serial.println("Hello");
+
+    // ESP32PWM::allocateTimer(0);
+    Serial.println("2. Timer allocated");
     pumpServo.setPeriodHertz(50);
-    pumpServo.writeMicroseconds(1500); // Make sure pump starts in STOP state
+    Serial.println("3");
     pumpServo.attach(pumpPin, 500, 2500);
+    Serial.println("3");
+    pumpServo.writeMicroseconds(1500);
+    Serial.println("3");
+
     Serial.println("PUMP Initialized and ready.");
 }
 
