@@ -1,12 +1,17 @@
 
 #include <Arduino.h>
 #include "Display.h"
+#include "Buttons.h"
 
 Display display;
+Buttons buttons;
 
 void setup()
 {
     Serial.begin(115200);
+
+    // initialize buttons
+    buttons.begin();
 
     // initalize display
     display.begin();
@@ -24,6 +29,23 @@ void setup()
 
 void loop()
 {
+    display.set_header("Buttons");
 
+    if (buttons.button1())
+    {
+        display.set_line(0, "Button 1 pressed");
+    }
+
+    if (buttons.button2())
+    {
+        display.set_line(1, "Button 2 pressed");
+    }
+
+    if (buttons.button3())
+    {
+        display.set_line(2, "Button 3 pressed");
+    }
+
+    delay(100);
 
 }
