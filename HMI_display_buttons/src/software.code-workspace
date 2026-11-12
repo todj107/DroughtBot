@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "../../.."
+		},
+		{
+			"name": "QR_scanner",
+			"path": ".."
+		}
+	],
+	"settings": {}
+}
