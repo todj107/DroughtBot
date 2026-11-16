@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Test frontend</title>
+	<link rel="stylesheet" type="text/css" href="/index.css">
+    <!-- <link rel="icon" type="image/x-icon" href=""> -->
+</head>
+
+<body>
+    <h1 id="caption"></h1>
+    <div class="content">
+        <div class="cud">
+            <div class="create">
+                <h2>Create new Plant(s)</h2>
+                <form id="create_plant">
+                    <label for="create_amount">Number of plants</label>
+                    <input type="text" name="amount" id="create_amount" value="1">
+
+                    <label for="create_qrcode">QR-Code: </label>
+                    <input type="text" id="create_qrcode" name="qr_code">
+
+                    <label for="create_target_weight">Target weight: </label>
+                    <input type="text" name="target_weight" id="create_target_weight">
+
+                    <label for="create_plant_type">Plant type: </label>
+                    <input type="text" name="plant_type" id="create_plant_type">
+
+                    <input type="submit" name="submit">
+                </form>
+            </div>
+
+            <div class="update">
+                <h2>Update existing Plant</h2>
+                <form id="update_plant">
+                    <label for="update_plant_id">Plant ID: </label>
+                    <input type="text" name="plant_id" id="update_plant_id">
+
+                    <label for="update_serie_id">Serie ID: </label>
+                    <input type="text" name="serie_id" id="update_serie_id">
+
+                    <label for="update_qrcode">QR-Code: </label>
+                    <input type="text" id="update_qrcode" name="qr_code">
+
+                    <label for="update_target_weight">Target weight: </label>
+                    <input type="text" name="target_weight" id="update_target_weight">
+
+                    <label for="update_plant_type">Plant type: </label>
+                    <input type="text" name="plant_type" id="update_plant_type">
+
+                    <input type="submit" name="submit">
+                </form>
+            </div>
+
+            <div class="delete">
+                <h2>Delete existing Plant</h2>
+                <form id="delete_plant">
+                    <label for="delete_id">Plant ID: </label>
+                    <input type="text" name="id" id="delete_id">
+
+                    <input type="submit" name="submit">
+                </form>
+            </div>
+
+            <p id="response"></p>
+        </div>
+
+        <div class="list">
+            <h2>List Plants in Serie</h2>
+            <div id="item_list"></div>
+        </div>
+    </div>
+
+    <script type="module" src="/plant.js"></script>
+</body> 
+</html>
