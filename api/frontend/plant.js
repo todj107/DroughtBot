@@ -17,7 +17,7 @@ async function get_plants() {
         response.textContent = "No Serie ID choosen";
     }
 
-    const results = await read(`http://127.0.0.1:8000/series/${encodeURIComponent(seriesId)}/plants/`);
+    const results = await read(`/series/${encodeURIComponent(seriesId)}/plants`);
 
     const list = document.getElementById("item_list");
     list.innerHTML = "";
@@ -93,7 +93,7 @@ async function create_plant() {
 
     let created = 0;
     for (let i = 0; i < amount; i++) {
-        const result = await create("http://127.0.0.1:8000/plants/", data);
+        const result = await create("/plants", data);
         if (!result) break;
         created++;
     }
@@ -131,7 +131,7 @@ async function update_plant() {
         return;
     }
 
-    const result = await update(`http://127.0.0.1:8000/plants/${encodeURIComponent(id)}`, data);
+    const result = await update(`/plants/${encodeURIComponent(id)}`, data);
     if (!result) {
         response.textContent = "Could not update Plant";
         return;
@@ -151,7 +151,7 @@ async function delete_plant() {
         return;
     }
 
-    const result = await deletes(`http://127.0.0.1:8000/plants/${encodeURIComponent(id)}`);
+    const result = await deletes(`/plants/${encodeURIComponent(id)}`);
 
     if (!result) {
         response.textContent = "Could not delete Plant";

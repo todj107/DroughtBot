@@ -1,7 +1,7 @@
 import {create, update, deletes, read} from "./api.js";
 
 async function get_series() {
-    const results = await read("http://127.0.0.1:8000/series/");
+    const results = await read("/series/");
 
     const list = document.getElementById("item_list");
     list.innerHTML = "";
@@ -57,7 +57,7 @@ async function create_serie() {
         return;
     }
 
-    const result = await create("http://127.0.0.1:8000/series/", { name });
+    const result = await create("/series/", { name });
     if (!result) {
         response.textContent = "Could not create Serie";
         return;
@@ -78,7 +78,7 @@ async function update_serie() {
         return;
     }
 
-    const result = await update(`http://127.0.0.1:8000/series/${encodeURIComponent(id)}`, { name });
+    const result = await update(`/series/${encodeURIComponent(id)}`, { name });
 
     if (!result) {
         response.textContent = "Could not update Serie";
@@ -100,7 +100,7 @@ async function delete_serie() {
         return;
     }
 
-    const result = await deletes(`http://127.0.0.1:8000/series/${encodeURIComponent(id)}`);
+    const result = await deletes(`/series/${encodeURIComponent(id)}`);
 
     if (!result) {
         response.textContent = "Could not delete Serie";

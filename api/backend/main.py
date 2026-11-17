@@ -2,17 +2,21 @@ from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 import models, schemas
 from database import get_db
-from fastapi.middleware.cors import CORSMiddleware
+# from fastapi.middleware.cors import CORSMiddleware
+
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 
 app = FastAPI(title="DB API")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5500", "http://localhost:5500"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["http://127.0.0.1:5500", "http://localhost:5500"],
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
 
 ################### Series ##################################
 # Create a Serie
@@ -146,7 +150,7 @@ def create_measurement(measurement: schemas.MeasurementBase, db: Session = Depen
     return db_measurement
 
 
-@app.get("/plants/{plant_id}/measurements/", response_model=list[schemas.MeasurementsOut])
+@app.get("/plants/{plant_id}/measurements", response_model=list[schemas.MeasurementsOut])
 def read_measurements_from_plant(plant_id: int, db: Session = Depends(get_db)):
     db_measurements = db.query(models.Measurement).filter(models.Measurement.plant_id == plant_id).all()
     if not db_measurements:
@@ -237,3 +241,8 @@ def delete_image(image_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return None
+
+
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

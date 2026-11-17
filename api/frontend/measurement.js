@@ -6,7 +6,7 @@ async function get_measurements() {
         response.textContent = "No Plant ID choosen";
     }
 
-    const results = await read(`http://127.0.0.1:8000/plants/${encodeURIComponent(plantId)}/measurements/`);
+    const results = await read(`/plants/${encodeURIComponent(plantId)}/measurements`);
 
     const list = document.getElementById("item_list");
     list.innerHTML = "";
@@ -57,7 +57,7 @@ async function delete_measurement() {
         return;
     }
 
-    const result = await deletes(`http://127.0.0.1:8000/measurements/${encodeURIComponent(id)}`);
+    const result = await deletes(`/measurements/${encodeURIComponent(id)}`);
 
     if (!result) {
         response.textContent = "Could not delete measurement";
