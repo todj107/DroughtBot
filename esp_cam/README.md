@@ -18,10 +18,21 @@ One can also change the `kJpegQuality`; however, that is somewhat of a black box
 
 If one want to change it, lower `kJpegQuality` number equals better quality.
 
-## webbapp_clean
+## Programs
 
-This program starts a live-stream on the local network. Live streaming the camera on the esp cam.
-
-## simple_image
+### simple_image
 
 This program takes a photo and then goes to sleep. As we probabilly want.
+
+### Spotlight
+
+A class for the spothlight and a simple code example.
+
+### Webbapp
+
+Contains two scripts. Both starts a webb-aplication on local host, where: `video` sends a livestream on the local host, and `images` sends images to local host which updates each (around) 15 seconds.
+
+Both these scripts uses Waveshares code example.
+
+
+
