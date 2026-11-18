@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Test frontend</title>
+	<link rel="stylesheet" type="text/css" href="/index.css">
+    <!-- <link rel="icon" type="image/x-icon" href=""> -->
+</head>
+
+<body>
+    <h1 id="caption"></h1>
+    <div class="content">
+        <div class="cud">
+            <div class="delete">
+                <h2>Delete existing Measurement</h2>
+                <form id="delete_measurement">
+                    <label for="delete_id">Measurement ID: </label>
+                    <input type="text" name="id" id="delete_id">
+
+                    <input type="submit" name="submit">
+                </form>
+            </div>
+
+            <p id="response"></p>
+        </div>
+
+        <div class="list">
+            <h2>List Measurements in Plant</h2>
+            <div id="item_list"></div>
+        </div>
+    </div>
+
+    <script type="module" src="/measurement.js"></script>
+</body> 
+</html>

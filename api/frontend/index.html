@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Test frontend</title>
+	<link rel="stylesheet" type="text/css" href="/index.css">
+    <!-- <link rel="icon" type="image/x-icon" href=""> -->
+</head>
+
+<body>
+    <h1 id="caption"></h1>
+    <div class="content">
+        <div class="cud">
+            <div class="create">
+                <h2>Create new Serie</h2>
+                <form id="create_serie">
+                    <label for="create_name">Name: </label>
+                    <input type="text" id="create_name" name="name">
+
+                    <input type="submit" name="submit">
+                </form>
+            </div>
+
+            <div class="update">
+                <h2>Update existing Serie</h2>
+                <form id="update_serie">
+                    <label for="update_id">ID: </label>
+                    <input type="text" name="id" id="update_id">
+
+                    <label for="update_name">Name: </label>
+                    <input type="text" id="update_name" name="name">
+
+                    <input type="submit" name="submit">
+                </form>
+            </div>
+
+            <div class="delete">
+                <h2>Delete existing Serie</h2>
+                <form id="delete_serie">
+                    <label for="delete_id">ID: </label>
+                    <input type="text" name="id" id="delete_id">
+
+                    <input type="submit" name="submit">
+                </form>
+            </div>
+
+            <p id="response"></p>
+        </div>
+
+        <div class="list">
+            <h2>List Series</h2>
+            <div id="item_list"></div>
+        </div>
+    </div>
+
+    <script type="module" src="/index.js"></script>
+</body> 
+</html>
