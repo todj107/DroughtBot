@@ -8,6 +8,7 @@
 namespace EspNowProtocol {
 
 constexpr uint8_t kChannel = 1;
+constexpr size_t kRequestParamBytes = 2;
 constexpr uint8_t kBroadcastAddress[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 enum class MessageType : uint8_t {
@@ -48,7 +49,7 @@ struct RequestMessage {
     MessageType type;
     uint32_t requestId;
     uint8_t commandLength;
-    uint8_t paramLength;
+    // followed by [command string][kRequestParamBytes bytes of params]
 };
 
 struct ResponseMessage {

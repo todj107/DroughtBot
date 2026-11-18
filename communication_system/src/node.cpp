@@ -23,15 +23,11 @@ bool sessionOpen = false;
 bool reconnectEnabled = true;
 uint32_t nextTransferId = 1;
 
-typedef uint8_t (*RequestHandler)(const char* command, const uint8_t* params, 
-                                   size_t paramLength);
-
 RequestHandler userRequestHandler = nullptr;
 volatile bool requestReceived = false;
 volatile uint32_t requestId = 0;
-char requestCommand[241];
-uint8_t requestParams[240];
-uint8_t requestParamLength = 0;
+char requestCommand[256];
+uint8_t requestParams[kRequestParamBytes];
 
 void onReceive(const esp_now_recv_info_t* senderInfo,
                const uint8_t* data, int length) {
@@ -102,22 +98,19 @@ void onReceive(const esp_now_recv_info_t* senderInfo,
         
         requestId = req->requestId;
         uint8_t commandLen = req->commandLength;
-        requestParamLength = req->paramLength;
         
         size_t offset = sizeof(RequestMessage);
         
-        if (commandLen > 0 && length >= offset + commandLen) {
-            memcpy(requestCommand, data + offset, commandLen);
-            requestCommand[commandLen] = '\0';
-            offset += commandLen;
-        } else {
-            requestCommand[0] = '\0';
+        //ignore requests that are too short for command + params
+        if (length < offset + commandLen + kRequestParamBytes) {
+            return;
         }
         
-        if (requestParamLength > 0 && 
-            length >= offset + requestParamLength) {
-            memcpy(requestParams, data + offset, requestParamLength);
-        }
+        memcpy(requestCommand, data + offset, commandLen);
+        requestCommand[commandLen] = '\0';
+        offset += commandLen;
+        
+        memcpy(requestParams, data + offset, kRequestParamBytes);
         
         requestReceived = true;
         return;
@@ -154,20 +147,8 @@ void processRequest() {
         return;
     }
 
-    uint8_t status = userRequestHandler(requestCommand, requestParams, 
-                                        requestParamLength);
-    
-    // Handler returns status code (0-255)
-    // if you want to include response data, encode it in the status
-    // or use sendResponseWithData() instead
-    
-    uint8_t packet[sizeof(ResponseMessage)];
-    ResponseMessage* resp = reinterpret_cast<ResponseMessage*>(packet);
-    resp->type = MessageType::RequestResponse;
-    resp->requestId = requestId;
-    resp->responseLength = 0;  
-    
-    esp_now_send(hubAddress, packet, sizeof(ResponseMessage));
+    //the handler sends its own response (sendOk, sendResponseValue, ...)
+    userRequestHandler(requestId, requestCommand, requestParams);
     
     requestReceived = false;
 }
@@ -202,50 +183,28 @@ bool sendResponseData(uint32_t requestIdToRespond, const uint8_t* data, size_t l
     return esp_now_send(hubAddress, packet, sizeof(ResponseMessage)) == ESP_OK;
 }
 
-bool sendResponseString(uint32_t requestId, const char* str) {
+//internal helper, not exposed in node.h
+static bool sendResponseString(uint32_t requestId, const char* str) {
     if (str == nullptr) {
         return false;
     }
-    size_t len = strlen(str);
-    return sendResponseData(requestId, (const uint8_t*)str, len);
+    return sendResponseData(requestId, reinterpret_cast<const uint8_t*>(str), strlen(str));
 }
 
 bool sendOk(uint32_t requestId) {
     return sendResponseString(requestId, "ok");
 }
 
-bool sendOkWithValue(uint32_t requestId, uint32_t value) {
+bool sendResponseValue(uint32_t requestId, uint32_t value) {
     char buf[20];
     snprintf(buf, sizeof(buf), "ok:%lu", (unsigned long)value);
     return sendResponseString(requestId, buf);
 }
 
-bool sendError(uint32_t requestId) {
-    return sendResponseString(requestId, "error");
-}
-
-bool sendErrorWithCode(uint32_t requestId, uint8_t code) {
+bool sendError(uint32_t requestId, uint8_t code) {
     char buf[20];
     snprintf(buf, sizeof(buf), "error:%u", (unsigned)code);
     return sendResponseString(requestId, buf);
-}
-
-bool sendStreamingResponse(uint32_t requestIdToStream, const uint8_t* data, size_t length) {
-    if (!sessionOpen || data == nullptr || length == 0) {
-        return false;
-    }
-    
-    //send "streaming" flag so hub knows data is coming
-    uint8_t packet[sizeof(ResponseMessage)];
-    ResponseMessage* resp = reinterpret_cast<ResponseMessage*>(packet);
-    resp->type = MessageType::RequestResponse;
-    resp->requestId = requestIdToStream;
-    resp->responseLength = 9;
-    memcpy(resp->response, "streaming", 9);
-    
-    esp_now_send(hubAddress, packet, sizeof(ResponseMessage));
-    
-    return sendData(data, length);
 }
 
 void setup() {

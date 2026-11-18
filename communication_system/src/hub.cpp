@@ -32,8 +32,6 @@ volatile bool responseReceived = false;
 volatile uint32_t responseRequestId = 0;
 volatile uint8_t responseLength = 0;
 volatile uint8_t responseData[240] = {};
-bool streamingResponse = false;
-uint32_t streamingResponseId = 0;
 
 void onReceive(const esp_now_recv_info_t* senderInfo,
                const uint8_t* data, int length) {
@@ -106,15 +104,15 @@ void sendNodeAssignment(const uint8_t address[6], uint8_t nodeId) {
     }
 }
 
-bool sendRequest(const char* command, const uint8_t* params, size_t paramLength,
-                 uint32_t timeoutMs) {
+//params points to kRequestParamBytes bytes, or nullptr for a command without params
+bool sendRequest(const char* command, const uint8_t* params, uint32_t timeoutMs) {
     if (!nodeConnected) {
         return false;
     }
 
     size_t commandLength = command ? strlen(command) : 0;
-    if (commandLength > 240 || paramLength > 240 ||
-        commandLength + paramLength + sizeof(RequestMessage) > ESP_NOW_MAX_DATA_LEN) {
+    if (commandLength > 240 ||
+        sizeof(RequestMessage) + commandLength + kRequestParamBytes > ESP_NOW_MAX_DATA_LEN) {
         return false;
     }
 
@@ -125,7 +123,6 @@ bool sendRequest(const char* command, const uint8_t* params, size_t paramLength,
     req->type = MessageType::Request;
     req->requestId = requestId;
     req->commandLength = static_cast<uint8_t>(commandLength);
-    req->paramLength = static_cast<uint8_t>(paramLength);
     
     size_t offset = sizeof(RequestMessage);
     
@@ -134,17 +131,18 @@ bool sendRequest(const char* command, const uint8_t* params, size_t paramLength,
         offset += commandLength;
     }
     
-    if (paramLength > 0) {
-        memcpy(packet + offset, params, paramLength);
-        offset += paramLength;
+    //params are always sent, zeros if the command has none
+    if (params != nullptr) {
+        memcpy(packet + offset, params, kRequestParamBytes);
+    } else {
+        memset(packet + offset, 0, kRequestParamBytes);
     }
+    offset += kRequestParamBytes;
     
     responseReceived = false;
     responseRequestId = 0;
     responseLength = 0;
     memset((void*)responseData, 0, sizeof(responseData));
-    streamingResponse = false;
-    streamingResponseId = 0;
     
     const esp_err_t result = esp_now_send(connectedNode, packet, offset);
     if (result != ESP_OK) {
@@ -162,10 +160,6 @@ bool sendRequest(const char* command, const uint8_t* params, size_t paramLength,
     }
     
     return true;
-}
-
-bool isResponseStreaming() {
-    return streamingResponse && streamingResponseId != 0;
 }
 
 void resetTransfer() {
@@ -322,12 +316,6 @@ void processMessage(const ReceivedMessage& message) {
         
         if (responseLength > 0 && responseLength <= sizeof(responseData)) {
             memcpy((void*)responseData, resp->response, responseLength);
-        }
-        
-        //check if response is streaming 
-        if (responseLength >= 9 && memcmp(resp->response, "streaming", 9) == 0) {
-            streamingResponse = true;
-            streamingResponseId = resp->requestId;
         }
         
         responseReceived = true;
