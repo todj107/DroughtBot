@@ -54,3 +54,14 @@ compile_commands.json
 ._*
 Thumbs.db
 Desktop.ini
+# debug information files
+*.dwo
+
+# test output & cache
+Testing/
+.cache/
+
+.pio/
+.vscode/
+lib/
+secrets.h
