@@ -1,56 +1,41 @@
-#ifndef SCALESTABILIZER_H
-#define SCALESTABILIZER_H
+#pragma once
 
-#include "Arduino.h"
-
-class ScaleStabilizer
-{
+/**
+ * @class ScaleStablilizer
+ * @brief Uses a simple exponential moving average (EMA) 
+ * combined with a small deadband for the displayed weight.
+ * 
+ * y_k = a*x_k + (1-a)*y_(k-1)
+ */
+class ScaleStabilizer {
 private:
-    double *_window;
-    int _windowSize;
-    double _weightThreshold;
-    int _forceOverwrite;
-    int _currentReadingIdx;
-    double _lastOutputValue;
-    double _lastCodeValue;
-    int _abortCounter;
-
-    /*!
-    * @brief Returns the M-2 average
-    * @return Returns the M-2 average of the moving window
-    */
-    double getAvg();
+    float _alpha;
+    float _filteredValue;
+    bool _initialized;
 
 public:
-    /*!
-    * @brief Construct a new Scale Stabilizer object
-    */
     ScaleStabilizer();
 
-    /*!
-    * @brief Destroy the Scale Stabilizer object
-    */
-    ~ScaleStabilizer();
+    /**
+     * @brief Initilize stabilizer.
+     * @param alpha Sensitivity. 0.1: low. 0.5: high.
+     */
+    void begin(float alpha);
 
-    /*!
-    * @brief ScaleStabilizer begin initializer
-    * @param windowSize represents the size of the moving window
-    * @param weightThreshold represents the weight/noise threshold - e.g. 0.1g
-    */
-    void begin(int windowSize, double weightThreshold);
+    /**
+     * @brief Reset the stabilizer. 
+     * Should be done for every tare()
+     */
+    void reset();
 
-    /*!
-    * @brief Adds the given reading to the moving window
-    * @param reading ADC value/reading
-    */
-    void add(double reading);
+    /**
+     * @brief Add a reading to the stabilizer.
+     * @param reading Raw unit value of scale.
+     */
+    void add(float reading);
 
-    /*!
-    * @brief Returns the stabilized load cell reading
-    * @param displayResolution represents the output resolution - e.g. 0.1g accuracy
-    * @param decimalPlaces represents the decimal places present in the output
-    */
-    double getStablilizedReading(double displayResolution = 0.1, int decimalPlaces = 1);
+    /**
+     * @brief Returns the stabilized scale value.
+     */
+    float getValue();
 };
-
-#endif

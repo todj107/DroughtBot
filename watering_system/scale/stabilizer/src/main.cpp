@@ -5,7 +5,7 @@ ScaleController scale;
 
 void setup() {
     Serial.begin(115200);
-    scale.begin();
+    scale.begin(6, 5, 0.3f);
     delay(3000);
 }
 

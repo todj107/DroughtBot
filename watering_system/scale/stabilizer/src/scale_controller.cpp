@@ -1,26 +1,25 @@
 #include "scale_controller.h"
 
-ScaleController::ScaleController(uint8_t dout_pin, uint8_t sck_pin){
-    _dout_pin = dout_pin;
-    _sck_pin = sck_pin;
+ScaleController::ScaleController(){
 }
 
-void ScaleController::begin(int window_size, float weight_threshold, float scale) {
-    _hx.begin(_dout_pin, _sck_pin);
+void ScaleController::begin(uint8_t dout_pin, uint8_t sck_pin, float alpha, float scale) {
+    _hx.begin(dout_pin, sck_pin);
     _hx.set_scale(scale);
     _hx.tare(10);
 
-    _stabilizer.begin(window_size, weight_threshold);
+    _stabilizer.begin(alpha);
 }
 
 void ScaleController::tare(uint8_t n) {
     _hx.tare(n);
+    _stabilizer.reset();
 }
 
 float ScaleController::get_stable_reading(uint8_t n){
     float v_raw = _hx.get_units(n);
     _stabilizer.add(v_raw);
-    float v_stable = (float)_stabilizer.getStablilizedReading();
+    float v_stable = _stabilizer.getValue();
 
     return v_stable;
 }
