@@ -65,3 +65,5 @@ Testing/
 .vscode/
 lib/
 secrets.h
+
+.venv
