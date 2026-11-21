@@ -36,3 +36,7 @@ void ScaleController::reset_to_start_offset(){
     _hx.set_offset(_start_offset);
     _stabilizer.reset();
 }
+
+bool ScaleController::is_ready() {
+    return _hx.is_ready();
+}

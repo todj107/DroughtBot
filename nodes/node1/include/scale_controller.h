@@ -51,4 +51,6 @@ public:
      * @brief Resets the scale to _start_offset.
      */
     void reset_to_start_offset();
+
+    bool is_ready();
 };

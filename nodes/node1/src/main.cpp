@@ -12,19 +12,30 @@
 #define QR_RX_PIN (uint8_t)4
 #define QR_TX_PIN (uint8_t)5
 
-// Error codes
-// CHANGE ERROR CODES TO CORRECT ONE
+// Internal error codes
+#define PROCESS_ABORTED -10
+
+// Error codes to hub (CHANGE ERROR CODES TO CORRECT ONE)
 #define INCORRECT_PARAMS 0
 #define QR_SCANNER_ERROR 0
 #define UNKNOWN_COMMAND 0
+#define PUMP_NOT_READY 0
+#define SCALE_NOT_READY 0
+#define NODE_BUSY 0
+#define ABORTED_PROCESS 0
+
 
 ScaleController scale;
 PumpController pump(PUMP_PIN);
 qrScanner qr;
 
+static volatile bool abortRequested = false;
+static bool busy = false;
+
 // Functions
 void commandHandler(uint32_t requestId, const char* command, const uint8_t* params);
 float waterProcess(float target_weight);
+float run(float stop);
 
 void setup() {
     Serial.begin(115200);
@@ -35,13 +46,9 @@ void setup() {
     // Start pump and scale
     if(!scale.begin(SCALE_PIN_DOUT, SCALE_PIN_SCK, 0.3f)) {
         Serial.println("Error: Initilizing Scale failed.");
-        delay(5000);
-        return;
     }
     if(!pump.begin()) {
         Serial.println("Error: Initilizing Pump failed.");
-        delay(5000);
-        return;
     }
     // Start communication with hub
     if (!openCommunication()) {
@@ -61,9 +68,51 @@ void loop() {
     delay(10);
 }
 
+/**
+ * @brief When a request is registered, the following structure should be followed:
+ * 1) Decode commande to a known task,
+ * 2) Send conformation to hub that task have been received,
+ * 3) Preform the task,
+ * 4) Send task data to the hub.
+ * 
+ * @param requestId The id of the request. Used by hub to seperate different tasks.
+ * @param command Contains the task that should be preformed.
+ * @param params Structure: [uint8_t, uint8_t]. Can contain data needed.
+ */
 void commandHandler(uint32_t requestId, const char* command, const uint8_t* params) {
     Serial.println("Request arrived");                  // DEBUGG (REMOVE LATER)
-    if (strcmp(command, "read_qr_code")) {
+
+    if (strcmp(command, "abort") == 0) {
+        sendOk(requestId);
+        // Stop the pump right away
+        abortRequested = true;
+        pump.stop();              
+        return;
+    }
+    if (busy) { 
+        // Reject other commands while pumping                 
+        sendError(requestId, NODE_BUSY);
+        return;
+    }
+    if (strcmp(command, "restart_esp") == 0) {
+        sendOk(requestId);
+        delay(200);
+        esp_restart();
+    }
+
+    // Check that pump and scale works
+    if (!pump.isReady()) {
+        sendError(requestId, PUMP_NOT_READY);
+        return;
+    }
+    if (!scale.is_ready()) {
+        sendError(requestId, SCALE_NOT_READY);
+        return;
+    }
+
+    // Compare command
+    if (strcmp(command, "read_qr_code") == 0) {
+        sendOk(requestId);
         Serial.println("Read QR-Code");                 // DEBUGG (REMOVE LATER)
 
         // Make scanner ready
@@ -81,6 +130,7 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
     }
 
     else if (strcmp(command, "read_scale") == 0) {
+        sendOk(requestId);
         Serial.println("Read Scale");                   // DEBUGG (REMOVE LATER)
 
         scale.reset_to_start_offset();
@@ -93,6 +143,7 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
     }
 
     else if(strcmp(command, "water_process") == 0) {
+        sendOk(requestId);
         Serial.println("Start Watering process");       // DEBUGG (REMOVE LATER)
 
         float target_weight = params[0];
@@ -101,9 +152,17 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
             sendError(requestId, INCORRECT_PARAMS);
             return;
         }
-        float end_weight = waterProcess(target_weight);
 
-        sendResponseValue(requestId, end_weight);
+        busy = true;
+        float end_weight = waterProcess(target_weight);
+        if (end_weight == PROCESS_ABORTED) {
+            sendError(requestId, ABORTED_PROCESS);
+        }
+        busy = false;
+
+        if (!sendResponseValue(requestId, end_weight)) {
+            Serial.println("Error: Response value failed to send.");
+        }
     }
     else {
         //unknown command
@@ -115,6 +174,7 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
  * @brief Controlls the pump and calls run() to handle scale readings.
  * @param target_weight Amount of water in ml we want to add.
  * @return Stable final-weight. i.e. the accual amount of water added.
+ * PROCESS_ABORTED if an abort-request was registered during the process.
  */
 float waterProcess(float target_weight) {
     // Zero the scale
@@ -122,11 +182,16 @@ float waterProcess(float target_weight) {
 
     // Run the pump on full speed until 2 grams of goal weight.
     pump.runFullSpeed();
-    run(target_weight - 2.0f);
+    if (run(target_weight - 2.0f) == PROCESS_ABORTED) {
+        return PROCESS_ABORTED;
+    }
 
     // 2 grams away from goal weight. Run the pump on slow mode.
     pump.runSlowSpeed();
     float stop_value = run(target_weight);
+    if (stop_value == PROCESS_ABORTED) {
+        return PROCESS_ABORTED;
+    }
 
     // Stop the pump
     pump.stop();
@@ -134,7 +199,7 @@ float waterProcess(float target_weight) {
     float final_value = scale.get_stable_reading(20);
     // Debugging
     Serial.print("\nStop value: ");
-    Serial.println(final_value);
+    Serial.println(stop_value);
     Serial.print("Avg after: ");
     Serial.println(final_value);
 
@@ -144,13 +209,21 @@ float waterProcess(float target_weight) {
 /**
  * @brief Pumps water until stop weight is reached.
  * @param stop Weight in grams.
+ * @return The end weight on success, 
+ * PROCESS_ABORTED if an abort-request was registered during the process.
  */
 float run(float stop) {
     float value;
     do {
-        delay(10);
+        // delay(10);
+        handleRequest();
+        if (abortRequested){
+            abortRequested = false;
+            return PROCESS_ABORTED;
+        }
+        
         value = scale.get_stable_reading();
-        Serial.println(value); // Remove after testing
+        Serial.println(value);                  // Remove after testing
     } while (value < stop);
 
     return value;

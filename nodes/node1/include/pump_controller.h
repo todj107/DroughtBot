@@ -22,6 +22,8 @@ public:
     // Runs the pump at slower speed (use this for the last few ml to avoid overshooting)
     void runSlowSpeed();
 
+    bool isReady();
+
     // Stops pump
     void stop();
 };

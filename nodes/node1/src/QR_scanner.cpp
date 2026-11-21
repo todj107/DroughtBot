@@ -9,7 +9,7 @@ void qrScanner::reset_buffer() {
 // Public
 void qrScanner::begin(int8_t rxPin, int8_t txPin) {
 	_serial.begin(9600, SERIAL_8N1, rxPin, txPin);
-};
+}
 
 void qrScanner::start_scan() {
 	// Discard old data

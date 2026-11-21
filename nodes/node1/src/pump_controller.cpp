@@ -22,6 +22,11 @@ void PumpController::runSlowSpeed() {
     pumpServo.writeMicroseconds(800);
 }
 
+bool PumpController::isReady() {
+    return pumpServo.attached();
+}
+
 void PumpController::stop() {
     pumpServo.writeMicroseconds(1500);
 }
+
