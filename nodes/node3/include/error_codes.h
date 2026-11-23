@@ -13,6 +13,7 @@
 #define CAMERA_INIT_FAILED 6
 
 // Node 3
+#define DISPLAY_INIT_FAILED 9
 
 // Common
 #define UNKNOWN_COMMAND 7
@@ -39,6 +40,9 @@ namespace error_code {
 
         case CAMERA_INIT_FAILED:
             return "ERROR: Camera initialization failed";
+
+        case DISPLAY_INIT_FAILED:
+        return "ERROR: Display initialization failed";
         
         case UNKNOWN_COMMAND:
             return "WARNING: Unknown command";

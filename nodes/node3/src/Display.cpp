@@ -29,12 +29,10 @@
 // Most of the code right now is unusable.
 // Want a clear_header(), clear_message(), set_button(1, 2 or 3). Or similar.
 
-Display::Display()
-{
+Display::Display(){
     bus = new Arduino_HWSPI(
         LCD_DC, LCD_CS, LCD_SCK, LCD_MOSI
     );
-
     gfx = new Arduino_ST7735(
         bus, LCD_RST,
         1,              // Rotation
@@ -45,49 +43,89 @@ Display::Display()
     );
 }
 
-void Display::begin()
-{
-    gfx->begin();
-    gfx->fillScreen(BLACK);
+bool Display::begin() {
+    if (!gfx->begin()) {
+        return false;
+    }
 
+    gfx->fillScreen(BLACK);
     gfx->setTextSize(2);
     gfx->setTextColor(WHITE);
     gfx->setCursor(3, 50);
     gfx->print("DroughtBot v1");
+
+    return true;
 }
 
-void Display::set_header(String text)
-{
-    gfx->fillRect(0, 0, 160, 25, CYAN);
+void Display::clear_header() {
+    gfx->fillRect(0, _head_box_y[0], _width, _head_box_y[1], CYAN);
+}
+
+void Display::clear_message() {
+    gfx->fillRect(0, _msg_box_y[0], _width, _msg_box_y[1], BLACK);
+}
+
+void Display::clear_button(int btn) {
+    gfx->fillRect(_btn_cursor_x[btn], _btn_box_y[0], _btn_length[btn], _btn_box_y[1], BLACK);
+}
+
+void Display::set_header(char *text) {
+    clear_header();
 
     gfx->setFont(&FreeSansBold9pt7b);
     gfx->setTextSize(1);
     gfx->setTextColor(BLACK);
-    gfx->setCursor(3, 20);
+    gfx->setCursor(INDENT, _head_cursor_y);
     gfx->print(text);
 }
 
-void Display::set_line(int line, String text)
-{
-    if (line < 0 || line >= 4)
-        return;
+// void Display::set_line(int line, char *text)
+// {
+//     if (line < 0 || line >= 4)
+//         return;
 
-    int y = 30 + line * 24;
+//     int y = 30 + line * 24;
 
-    // Clear previous text
-    gfx->fillRect(0, y, 160, 24, BLACK);
+//     // Clear previous text
+//     gfx->fillRect(0, y, 160, 24, BLACK);
+
+//     gfx->setFont(&FreeSans9pt7b);
+//     gfx->setTextSize(1);
+//     gfx->setTextColor(WHITE);
+//     gfx->setCursor(3, y + 17);
+//     gfx->println(text);
+// }
+
+void Display::set_message(char *text) {
+    clear_message();
 
     gfx->setFont(&FreeSans9pt7b);
     gfx->setTextSize(1);
     gfx->setTextColor(WHITE);
-    gfx->setCursor(3, y + 17);
-    gfx->println(text);
+
+    gfx->setCursor(INDENT, _msg_cursor_y);
+    gfx->print(text);    
 }
 
-void Display::test_colors()
-{
-    gfx->fillRect(0, 5, 50, 30, RED);
-    gfx->fillRect(55, 5, 50, 30, GREEN);
-    gfx->fillRect(110, 5, 50, 30, BLUE);
-    delay(200);
+void Display::set_button(int btn, char *text) {
+    int pos_x = _btn_cursor_x[btn];
+    int pos_y = _btn_cursor_y;
+
+    clear_button(btn);
+    _btn_length[btn] = sizeof(text)/sizeof(char); 
+
+    gfx->setFont(&FreeSans9pt7b);
+    gfx->setTextSize(1);
+    gfx->setTextColor(WHITE);
+
+    gfx->setCursor(pos_x, pos_y);
+    gfx->print(text);
 }
+
+// void Display::test_colors()
+// {
+//     gfx->fillRect(0, 5, 50, 30, RED);
+//     gfx->fillRect(55, 5, 50, 30, GREEN);
+//     gfx->fillRect(110, 5, 50, 30, BLUE);
+//     delay(200);
+// }
