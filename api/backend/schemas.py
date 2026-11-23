@@ -45,21 +45,26 @@ class MeasurementsOut(MeasurementBase):
     model_config = ConfigDict(from_attributes=True)
 
 class MeasurementUpdate(BaseModel):
-    plant_id: int | None
-    start_weight: float | None
-    water_added: float | None
+    plant_id: int | None = None
+    start_weight: float | None = None
+    water_added: float | None = None
 
 
 #### Images
+# image_data is sent/returned as a base64 string in JSON
 class ImageBase(BaseModel):
     measurement_id: int
     image_data: bytes
 
+    model_config = ConfigDict(val_json_bytes='base64', ser_json_bytes='base64')
+
 class ImageOut(ImageBase):
     id: int
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, val_json_bytes='base64', ser_json_bytes='base64')
 
 class ImageUpdate(BaseModel):
     measurement_id: int | None = None
     image_data: bytes | None = None
+
+    model_config = ConfigDict(val_json_bytes='base64', ser_json_bytes='base64')

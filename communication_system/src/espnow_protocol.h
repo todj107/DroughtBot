@@ -24,6 +24,7 @@ enum class MessageType : uint8_t {
     Request = 10,
     RequestResponse = 11,
     NodeAssignment = 12,
+    Button = 13,    // [type][body...], needs no session and no request id
 };
 
 #pragma pack(push, 1)

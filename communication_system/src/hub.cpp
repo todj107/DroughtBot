@@ -16,22 +16,93 @@ QueueHandle_t receiveQueue = nullptr;
 portMUX_TYPE droppedMessagesMux = portMUX_INITIALIZER_UNLOCKED;
 uint32_t droppedMessages = 0;
 bool hubReady = false;
-bool nodeConnected = false;
-uint8_t connectedNode[6] = {};
-uint8_t connectedNodeId = 0;
+
+//every node that has handshaken keeps its id; connected nodes can be addressed by the pi
+constexpr size_t kMaxNodes = 8;
+
+struct NodeSlot {
+    bool known;
+    bool connected;
+    uint8_t address[6];
+    uint8_t id;
+    bool transferActive;
+    uint32_t activeTransferId;
+    uint32_t activeChunkCount;
+    uint32_t nextChunkIndex;
+    bool hasLastChunk;
+    uint32_t lastTransferId;
+    uint32_t lastChunkIndex;
+    uint32_t activeRequestId;   //latest request sent to this node, tags its chunked data
+};
+
+NodeSlot nodes[kMaxNodes] = {};
 uint8_t nextNodeId = 1;
-bool transferActive = false;
-uint32_t activeTransferId = 0;
-uint32_t activeChunkCount = 0;
-uint32_t nextChunkIndex = 0;
-bool hasLastChunk = false;
-uint32_t lastTransferId = 0;
-uint32_t lastChunkIndex = 0;
-uint32_t nextRequestId = 1;
-volatile bool responseReceived = false;
-volatile uint32_t responseRequestId = 0;
-volatile uint8_t responseLength = 0;
-volatile uint8_t responseData[240] = {};
+
+//usb serial frames between the pi and the hub
+constexpr uint8_t kPiMagic = 0xA5;
+constexpr uint8_t kPiKindNode = 0;      //hub -> pi: response or data from a node
+constexpr uint8_t kPiKindButton = 1;    //hub -> pi: button press, request id is 0
+constexpr uint8_t kPiKindRequest = 2;   //pi -> hub: request for a node
+constexpr uint8_t kPiKindList = 3;      //pi -> hub: send an event for every connected node
+constexpr uint8_t kPiKindEvent = 3;     //hub -> pi: body [1 = connected, 0 = disconnected][6 byte MAC]
+
+#pragma pack(push, 1)
+struct PiFrameHeader {
+    uint8_t magic;
+    uint8_t kind;
+    uint8_t nodeId;         //0 when no node is involved
+    uint32_t requestId;
+    uint32_t transferId;    //0 for single message responses
+    uint32_t chunkIndex;
+    uint32_t chunkCount;
+    uint16_t length;        //body bytes that follow
+};
+#pragma pack(pop)
+
+//request from pi: [magic][kind][u8 nodeId][u32 requestId][u8 commandLength][command][kRequestParamBytes params]
+//list from pi: [magic][kind]
+constexpr size_t kPiRequestHeaderBytes = 8;
+constexpr size_t kPiListBytes = 2;
+constexpr size_t kPiRequestMaxBytes = kPiRequestHeaderBytes + 255 + kRequestParamBytes;
+uint8_t piBuffer[kPiRequestMaxBytes];
+size_t piBufferLength = 0;
+
+NodeSlot* findNode(const uint8_t address[6]) {
+    for (NodeSlot& node : nodes) {
+        if (node.known && sameAddress(node.address, address)) {
+            return &node;
+        }
+    }
+    return nullptr;
+}
+
+NodeSlot* findConnectedNodeById(uint8_t id) {
+    for (NodeSlot& node : nodes) {
+        if (node.connected && node.id == id) {
+            return &node;
+        }
+    }
+    return nullptr;
+}
+
+NodeSlot* freeSlot() {
+    for (NodeSlot& node : nodes) {
+        if (!node.known) {
+            return &node;
+        }
+    }
+    return nullptr;
+}
+
+void resetTransfer(NodeSlot& node) {
+    
+    //forget the current transfer
+    node.transferActive = false;
+    node.activeTransferId = 0;
+    node.activeChunkCount = 0;
+    node.nextChunkIndex = 0;
+    node.hasLastChunk = false;
+}
 
 void onReceive(const esp_now_recv_info_t* senderInfo,
                const uint8_t* data, int length) {
@@ -104,19 +175,41 @@ void sendNodeAssignment(const uint8_t address[6], uint8_t nodeId) {
     }
 }
 
-//params points to kRequestParamBytes bytes, or nullptr for a command without params
-bool sendRequest(const char* command, const uint8_t* params, uint32_t timeoutMs) {
-    if (!nodeConnected) {
+//writes one frame to the pi, returns false if usb serial did not take all bytes
+bool writePiFrame(uint8_t kind, uint8_t nodeId, uint32_t requestId, uint32_t transferId,
+                  uint32_t chunkIndex, uint32_t chunkCount,
+                  const uint8_t* body, size_t length) {
+    const PiFrameHeader header = {kPiMagic, kind, nodeId, requestId, transferId,
+                                  chunkIndex, chunkCount,
+                                  static_cast<uint16_t>(length)};
+    
+    if (Serial.write(reinterpret_cast<const uint8_t*>(&header), sizeof(header)) != sizeof(header)) {
         return false;
     }
+    return length == 0 || Serial.write(body, length) == length;
+}
 
-    size_t commandLength = command ? strlen(command) : 0;
+void sendPiError(uint8_t nodeId, uint32_t requestId, const char* text) {
+    writePiFrame(kPiKindNode, nodeId, requestId, 0, 0, 1,
+                 reinterpret_cast<const uint8_t*>(text), strlen(text));
+}
+
+void sendNodeEvent(const NodeSlot& node, bool connected) {
+    uint8_t body[7];
+    body[0] = connected ? 1 : 0;
+    memcpy(body + 1, node.address, sizeof(node.address));
+    writePiFrame(kPiKindEvent, node.id, 0, 0, 0, 1, body, sizeof(body));
+}
+
+//params points to kRequestParamBytes bytes, or nullptr for a command without params
+//does not wait: the node answers "ok" and later sends its data tagged with requestId
+bool sendRequest(NodeSlot& node, uint32_t requestId, const uint8_t* command,
+                 size_t commandLength, const uint8_t* params) {
     if (commandLength > 240 ||
         sizeof(RequestMessage) + commandLength + kRequestParamBytes > ESP_NOW_MAX_DATA_LEN) {
         return false;
     }
 
-    uint32_t requestId = nextRequestId++;
     uint8_t packet[ESP_NOW_MAX_DATA_LEN];
     
     RequestMessage* req = reinterpret_cast<RequestMessage*>(packet);
@@ -139,50 +232,88 @@ bool sendRequest(const char* command, const uint8_t* params, uint32_t timeoutMs)
     }
     offset += kRequestParamBytes;
     
-    responseReceived = false;
-    responseRequestId = 0;
-    responseLength = 0;
-    memset((void*)responseData, 0, sizeof(responseData));
-    
-    const esp_err_t result = esp_now_send(connectedNode, packet, offset);
+    const esp_err_t result = esp_now_send(node.address, packet, offset);
     if (result != ESP_OK) {
         Serial0.printf("Could not send request: %s\n", esp_err_to_name(result));
         return false;
     }
     
-    const uint32_t start = millis();
-    while (millis() - start < timeoutMs && !responseReceived) {
-        delay(10);
-    }
-    
-    if (!responseReceived || responseRequestId != requestId) {
-        return false;
-    }
-    
+    node.activeRequestId = requestId;
     return true;
 }
 
-void resetTransfer() {
-    
-    //forget the current transfer
-    transferActive = false;
-    activeTransferId = 0;
-    activeChunkCount = 0;
-    nextChunkIndex = 0;
-}
-
-
-void processData(const ReceivedMessage& message) {
-    
-    //handle button press input from the user
-    //bypass normal data handling for button presses
-    if(buttonPress) {
-        serialInput(buttonPress);
-        return;
+//reads complete requests from the pi out of usb serial
+void pollPi() {
+    while (Serial.available() > 0 && piBufferLength < sizeof(piBuffer)) {
+        piBuffer[piBufferLength++] = static_cast<uint8_t>(Serial.read());
     }
 
-    //only the connected node can send data (except for input from buttons  )
-    if (!nodeConnected || !sameAddress(message.senderAddress, connectedNode)) {
+    while (true) {
+        
+        //resync on the next magic byte
+        size_t skip = 0;
+        while (skip < piBufferLength && piBuffer[skip] != kPiMagic) {
+            ++skip;
+        }
+        if (skip > 0) {
+            memmove(piBuffer, piBuffer + skip, piBufferLength - skip);
+            piBufferLength -= skip;
+        }
+        
+        if (piBufferLength < kPiListBytes) {
+            return;
+        }
+
+        if (piBuffer[1] == kPiKindList) {
+            
+            //the pi may start after the nodes did, so it asks who is connected
+            for (const NodeSlot& node : nodes) {
+                if (node.connected) {
+                    sendNodeEvent(node, true);
+                }
+            }
+            memmove(piBuffer, piBuffer + kPiListBytes, piBufferLength - kPiListBytes);
+            piBufferLength -= kPiListBytes;
+            continue;
+        }
+
+        if (piBuffer[1] != kPiKindRequest) {
+            memmove(piBuffer, piBuffer + 1, --piBufferLength);
+            continue;
+        }
+
+        if (piBufferLength < kPiRequestHeaderBytes) {
+            return;
+        }
+
+        const size_t commandLength = piBuffer[7];
+        const size_t total = kPiRequestHeaderBytes + commandLength + kRequestParamBytes;
+        if (piBufferLength < total) {
+            return;
+        }
+
+        const uint8_t nodeId = piBuffer[2];
+        uint32_t requestId;
+        memcpy(&requestId, piBuffer + 3, sizeof(requestId));
+        
+        NodeSlot* node = findConnectedNodeById(nodeId);
+        if (node == nullptr) {
+            sendPiError(nodeId, requestId, "error:no_node");
+        } else if (!sendRequest(*node, requestId, piBuffer + kPiRequestHeaderBytes, commandLength,
+                                piBuffer + kPiRequestHeaderBytes + commandLength)) {
+            sendPiError(nodeId, requestId, "error:hub_send_failed");
+        }
+
+        memmove(piBuffer, piBuffer + total, piBufferLength - total);
+        piBufferLength -= total;
+    }
+}
+
+void processData(const ReceivedMessage& message) {
+
+    //only a connected node can send data
+    NodeSlot* node = findNode(message.senderAddress);
+    if (node == nullptr || !node->connected) {
         sendTargetedControl(message.senderAddress, MessageType::Busy);
         return;
     }
@@ -200,56 +331,60 @@ void processData(const ReceivedMessage& message) {
         return;
     }
 
-    if (hasLastChunk && header.transferId == lastTransferId &&
-        header.chunkIndex == lastChunkIndex) {
+    if (node->hasLastChunk && header.transferId == node->lastTransferId &&
+        header.chunkIndex == node->lastChunkIndex) {
         
         //the ack may have been lost, so ack the retry without writing twice
         sendAck(message.senderAddress, header.transferId, header.chunkIndex);
         return;
     }
 
-    if (transferActive && header.chunkIndex == 0 &&
-        header.transferId != activeTransferId) {
-        resetTransfer();
+    if (node->transferActive && header.chunkIndex == 0 &&
+        header.transferId != node->activeTransferId) {
+        resetTransfer(*node);
     }
 
-    if (!transferActive) {
+    if (!node->transferActive) {
         
         //a transfer always starts with chunk zero
         if (header.chunkIndex != 0) {
             Serial0.println("Dropped out-of-order data chunk");
             return;
         }
-        transferActive = true;
-        activeTransferId = header.transferId;
-        activeChunkCount = header.chunkCount;
-        nextChunkIndex = 0;
+        node->transferActive = true;
+        node->activeTransferId = header.transferId;
+        node->activeChunkCount = header.chunkCount;
+        node->nextChunkIndex = 0;
     }
 
-    if (header.transferId != activeTransferId ||
-        header.chunkCount != activeChunkCount ||
-        header.chunkIndex != nextChunkIndex) {
+    if (header.transferId != node->activeTransferId ||
+        header.chunkCount != node->activeChunkCount ||
+        header.chunkIndex != node->nextChunkIndex) {
         Serial0.println("Dropped out-of-order data chunk");
         return;
     }
 
     const uint8_t* payload = message.bytes + sizeof(DataHeader);
     const size_t payloadLength = message.length - sizeof(DataHeader);
-    if (Serial.write(payload, payloadLength) != payloadLength) {
+    if (!writePiFrame(kPiKindNode, node->id, node->activeRequestId, header.transferId,
+                      header.chunkIndex, header.chunkCount, payload, payloadLength)) {
         Serial0.println("Could not write complete chunk to USB serial");
         return;
     }
 
-    hasLastChunk = true;
-    lastTransferId = header.transferId;
-    lastChunkIndex = header.chunkIndex;
+    node->hasLastChunk = true;
+    node->lastTransferId = header.transferId;
+    node->lastChunkIndex = header.chunkIndex;
     
     //ack only after the bytes made it to usb serial
     sendAck(message.senderAddress, header.transferId, header.chunkIndex);
 
-    ++nextChunkIndex;
-    if (nextChunkIndex == activeChunkCount) {
-        resetTransfer();
+    ++node->nextChunkIndex;
+    if (node->nextChunkIndex == node->activeChunkCount) {
+        node->transferActive = false;
+        node->activeTransferId = 0;
+        node->activeChunkCount = 0;
+        node->nextChunkIndex = 0;
     }
 }
 
@@ -263,39 +398,51 @@ void processMessage(const ReceivedMessage& message) {
     }
 
     if (type == MessageType::Handshake && message.length == 1) {
+        NodeSlot* node = findNode(message.senderAddress);
         
-        //let the current node back in, or accept a new one if we're free
-        if (nodeConnected && sameAddress(message.senderAddress, connectedNode)) {
+        if (node != nullptr && node->connected) {
+            
+            //a node that is already in just gets its id again
             sendControl(message.senderAddress, MessageType::Ready);
-            sendNodeAssignment(message.senderAddress, connectedNodeId);
-
-        } else if (!nodeConnected && addPeer(message.senderAddress)) {
-            memcpy(connectedNode, message.senderAddress, sizeof(connectedNode));
-            connectedNodeId = nextNodeId++;
-            nodeConnected = true;
-            resetTransfer();
-            hasLastChunk = false;
-            Serial0.printf("Node connected: %02X:%02X:%02X:%02X:%02X:%02X (ID: %u)\n",
-                           connectedNode[0], connectedNode[1], connectedNode[2],
-                           connectedNode[3], connectedNode[4], connectedNode[5],
-                           connectedNodeId);
-            sendControl(message.senderAddress, MessageType::Ready);
-            sendNodeAssignment(message.senderAddress, connectedNodeId);
-
-        } else {
-            sendTargetedControl(message.senderAddress, MessageType::Busy);
+            sendNodeAssignment(message.senderAddress, node->id);
+            return;
         }
+
+        //a returning node keeps its id, a new one needs a free slot
+        if (node == nullptr) {
+            node = freeSlot();
+        }
+        if (node == nullptr || !addPeer(message.senderAddress)) {
+            sendTargetedControl(message.senderAddress, MessageType::Busy);
+            return;
+        }
+
+        if (!node->known) {
+            memcpy(node->address, message.senderAddress, sizeof(node->address));
+            node->id = nextNodeId++;
+            node->known = true;
+        }
+        node->connected = true;
+        resetTransfer(*node);
+        Serial0.printf("Node connected: %02X:%02X:%02X:%02X:%02X:%02X (ID: %u)\n",
+                       node->address[0], node->address[1], node->address[2],
+                       node->address[3], node->address[4], node->address[5],
+                       node->id);
+        sendControl(message.senderAddress, MessageType::Ready);
+        sendNodeAssignment(message.senderAddress, node->id);
+        sendNodeEvent(*node, true);
         return;
     }
 
     if (type == MessageType::Close && message.length == 1) {
         
-        //free the hub when the connected node is done. TODO: handle timeout for inactive nodes
-        if (nodeConnected && sameAddress(message.senderAddress, connectedNode)) {
-            nodeConnected = false;
-            resetTransfer();
-            hasLastChunk = false;
-            Serial0.println("Node disconnected");
+        //forget the connection but keep the id. TODO: handle timeout for inactive nodes
+        NodeSlot* node = findNode(message.senderAddress);
+        if (node != nullptr && node->connected) {
+            node->connected = false;
+            resetTransfer(*node);
+            Serial0.printf("Node disconnected (ID: %u)\n", node->id);
+            sendNodeEvent(*node, false);
             sendTargetedControl(message.senderAddress, MessageType::Closed);
             if (esp_now_is_peer_exist(message.senderAddress) &&
                 esp_now_del_peer(message.senderAddress) != ESP_OK) {
@@ -307,18 +454,38 @@ void processMessage(const ReceivedMessage& message) {
         return;
     }
 
+    //responses and small measurements go straight to the pi, no transfer needed
     if (type == MessageType::RequestResponse && 
-        message.length >= sizeof(ResponseMessage)) {
-        ResponseMessage* resp = reinterpret_cast<ResponseMessage*>(message.bytes);
+        message.length >= sizeof(ResponseMessage) - sizeof(ResponseMessage::response)) {
+        const ResponseMessage* resp = reinterpret_cast<const ResponseMessage*>(message.bytes);
+        const size_t headerBytes = sizeof(ResponseMessage) - sizeof(resp->response);
         
-        responseRequestId = resp->requestId;
-        responseLength = resp->responseLength;
-        
-        if (responseLength > 0 && responseLength <= sizeof(responseData)) {
-            memcpy((void*)responseData, resp->response, responseLength);
+        const NodeSlot* node = findNode(message.senderAddress);
+        if (node == nullptr || !node->connected) {
+            Serial0.println("Dropped response from a node that is not connected");
+            return;
         }
         
-        responseReceived = true;
+        if (resp->responseLength > sizeof(resp->response) ||
+            message.length < headerBytes + resp->responseLength) {
+            Serial0.println("Dropped malformed response");
+            return;
+        }
+        
+        if (!writePiFrame(kPiKindNode, node->id, resp->requestId, 0, 0, 1,
+                          resp->response, resp->responseLength)) {
+            Serial0.println("Could not write response to USB serial");
+        }
+        return;
+    }
+
+    //button presses have no request id and only concern the pi
+    if (type == MessageType::Button && message.length > 1) {
+        const NodeSlot* node = findNode(message.senderAddress);
+        if (!writePiFrame(kPiKindButton, node ? node->id : 0, 0, 0, 0, 1,
+                          message.bytes + 1, message.length - 1)) {
+            Serial0.println("Could not write button press to USB serial");
+        }
         return;
     }
 
@@ -377,9 +544,12 @@ void loop() {
                        static_cast<unsigned long>(dropped));
     }
 
+    //read requests from the pi
+    pollPi();
+
     //handle the next queued message
     ReceivedMessage message = {};
-    if (xQueueReceive(receiveQueue, &message, pdMS_TO_TICKS(100)) == pdTRUE) {
+    if (xQueueReceive(receiveQueue, &message, pdMS_TO_TICKS(10)) == pdTRUE) {
         processMessage(message);
     }
 }
