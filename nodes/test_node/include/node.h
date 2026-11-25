@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "espnow_protocol.h"
 
 bool openCommunication();
 bool sendData(const uint8_t* data, size_t length);
