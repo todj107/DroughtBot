@@ -2,6 +2,7 @@
 """Decides what to do: reacts to buttons and node answers, sends the requests.
 Saving data is done by pi_serial_handler.py."""
 
+import time
 import pi_serial_handler as handler
 
 _pending = None  # {'ctx': ctx, 'resume': callable} — set while waiting for confirmation
@@ -62,6 +63,9 @@ def request(ctx, role, step, command, params=(0, 0)):
         return
     
     ctx['step'] = step
+    ctx['role'] = role
+    ctx['command'] = command
+    ctx['params'] = params
     handler.send_request(node_id, command, params, ctx=ctx, timeout=TIMEOUTS[step])
 
 def confirm(ctx, ready_code, resume):
@@ -113,9 +117,11 @@ def on_done(ctx, result, error):
     global _pending
     step = ctx['step']
 
-    if(error == "4"): 
+    if(error == 'error:4'): 
         # Error code 4 indicates the node is busy, so we just return and wait.
         print(f"Node is busy for step {step}, waiting...")
+        time.sleep(4)
+        request(ctx, ctx['role'], step, ctx['command'], ctx['params'])
         return
     
     if error:
