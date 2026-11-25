@@ -16,7 +16,7 @@ ROLE_MACS = {
 }
 
 # button body first byte
-BUTTON_START = 0
+BUTTON_START = 2
 BUTTON_ABORT = 1
 
 # the node reads a single byte of water amount
