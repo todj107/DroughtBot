@@ -129,6 +129,11 @@ def on_done(ctx, result, error):
     global _pending
     step = ctx['step']
 
+    if error == 'error:4' and step == 'water':
+        #try again later if the node is busy
+        request(ctx, ctx['role'], 'image', ctx['command'], ctx['params'])
+        return
+
     if error == 'error:4' and step == 'image':
         _retry_image(ctx)
         return
