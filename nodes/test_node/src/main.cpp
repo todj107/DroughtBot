@@ -80,6 +80,9 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
         else if (params[0] == STATUS_READY) {
             Serial.println("Ready");
             Serial.println(DisplayMessages::ready(params[1]));
+
+            delay(2000);
+            sendButton(EspNowProtocol::ButtonId::Start);
         }
 
         else if (params[0] == STATUS_RUNNING) {
@@ -179,9 +182,10 @@ float waterProcessSimulation(float target_weight) {
     unsigned long now = millis();
     while (millis() - now < 10000) {
         handleRequest();
-        if (abortRequested)
+        if (abortRequested) {
             abortRequested = false;
             return INTERNAL_PROCESS_ABORTED;
+        }
         
         delay(500);
     }
