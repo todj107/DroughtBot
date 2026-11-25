@@ -34,3 +34,10 @@ class Image(Base):
     id = Column(Integer, primary_key=True)
     measurement_id = Column(Integer, ForeignKey("Measurements.id"), nullable=False)
     image_data = Column(LargeBinary, nullable=True)
+
+class Node(Base):
+    __tablename__ = "Nodes"
+
+    id = Column(Integer, primary_key=True)
+    mac = Column(String, nullable=False)
+    roles = Column(String, nullable=False)

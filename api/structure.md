@@ -95,6 +95,16 @@ CREATE TABLE Images (
 );
 ```
 
+### Nodes
+```SQL
+CREATE TABLE Nodes (
+    id INTEGER PRIMARY KEY,
+    mac TEXT NOT NULL,
+    roles TEXT NOT NULL
+);
+```
+
+
 ## Notes on database:
 1. 
 Here I have set up sush that deleting a series deletes the plants related to that series, which deletes the measurements and images related to that plant(s).

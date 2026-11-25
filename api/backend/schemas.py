@@ -68,3 +68,20 @@ class ImageUpdate(BaseModel):
     image_data: bytes | None = None
 
     model_config = ConfigDict(val_json_bytes='base64', ser_json_bytes='base64')
+
+
+### ESP MAC-adresses
+class NodeBase(BaseModel):
+    mac: str
+    roles: str
+
+    model_config = ConfigDict(val_json_bytes='base64', ser_json_bytes='base64')
+
+class NodeOut(NodeBase):
+    id: int 
+
+class NodeUpdate(BaseModel):
+    mac: str | None = None
+    roles: str | None = None
+
+    model_config = ConfigDict(val_json_bytes='base64', ser_json_bytes='base64')

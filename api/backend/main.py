@@ -106,6 +106,18 @@ def read_plants_from_serie(serie_id: int, db: Session = Depends(get_db)):
     return db_plants
 
 
+@app.get("/plants/qr/{qr_code}", response_model=schemas.PlantOut)
+def read_plant_from_qr(qr_code: str, db: Session = Depends(get_db)):
+    db_plant = db.query(models.Plant).filter(models.Plant.qr_code == qr_code).first()
+    if not db_plant:
+        raise HTTPException(
+            status_code=400,
+            detail="QR-code not found"
+        )
+
+    return db_plant
+
+
 @app.patch("/plants/{plant_id}", response_model=schemas.PlantOut)
 def update_plant(
             plant_id: int, 
@@ -241,6 +253,27 @@ def delete_image(image_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return None
+
+
+################# Node ##################
+@app.post("/nodes", response_model=schemas.NodeBase)
+def create_node(node: schemas.NodeBase, db: Session = Depends(get_db)):
+    db_node = models.Node(**node.model_dump())
+
+    db.add(db_node)
+    db.commit()
+    db.refresh(db_node)
+
+    return db_node
+
+@app.get("/nodes", response_model=list[schemas.NodeOut])
+def read_nodes(
+            skip: int = 0, 
+            limit: int = 100, 
+            db: Session = Depends(get_db)
+        ):
+    db_nodes = db.query(models.Node).offset(skip).limit(limit).all()
+    return db_nodes
 
 
 
