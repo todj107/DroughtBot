@@ -355,7 +355,7 @@ bool closeCommunication() {
     return false;
 }
 
-bool sendButton(ButtonId id) {
+bool sendButton(EspNowProtocol::ButtonId id) {
     if (!sessionOpen) return false;
     const uint8_t packet[2] = {static_cast<uint8_t>(MessageType::Button),
                                static_cast<uint8_t>(id)};
