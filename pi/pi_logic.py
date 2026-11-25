@@ -2,18 +2,24 @@
 """Decides what to do: reacts to buttons and node answers, sends the requests.
 Saving data is done by pi_serial_handler.py."""
 
-import os
+#todo: handle any plant series
+# get plants for every request, not just on start, so new plants are handled too
 
 import pi_serial_handler as handler
 
-SERIE_ID = int(os.environ.get('DROUGHTBOT_SERIE_ID', '1'))
+# Series ID will be set dynamically based on the QR code of the plant.
+SERIE_ID = None
 
-# Which physical node does what, by MAC (printed by the node and the hub on connect).
-# Node ids come from the hub in connection order, so they are looked up through the MAC.
-ROLE_MACS = {
-    'station': os.environ.get('DROUGHTBOT_STATION_MAC', '').upper(),   # QR scanner, scale, pump
-    'camera': os.environ.get('DROUGHTBOT_CAMERA_MAC', '').upper(),
-}
+# station node MAC set based on the QR code of the plant.
+STATION_MAC = None
+
+# camera node MAC set based on the QR code of the plant.
+CAMERA_MAC = None
+
+# inout node MAC set based on the QR code of the plant.
+INOUT_MAC = None
+
+ROLE_MACS = {}
 
 # button body first byte
 BUTTON_START = 2
@@ -24,24 +30,25 @@ MAX_WATER = 255
 
 # seconds a node gets to deliver its result after its "ok"
 TIMEOUTS = {
-    'qr': 30,
-    'scale': 15,
+    'qr': 60,
+    'scale': 120,
     'water': 120,
-    'image': 30,
+    'image': 240,
 }
 
-plants = []
+def load_node_macs():
+    ROLE_MACS.clear()
+    for node in handler.api('GET', '/nodes') or []:
+        role = node.get('role', '').lower()
+        mac = node.get('mac', '').upper()
+        if role and mac:
+            ROLE_MACS[role] = mac
+    print(f"Node MACs loaded: {ROLE_MACS}")
 
 def node_for(role):
     for node_id, mac in handler.nodes.items():
         if mac == ROLE_MACS[role]:
             return node_id
-    return None
-
-def plant_for_qr(qr_code):
-    for plant in plants:
-        if plant['qr_code'] == qr_code:
-            return plant
     return None
 
 def request(ctx, role, step, command, params=(0, 0)):
@@ -67,7 +74,9 @@ def on_button(node_id, body):
         return
     
     if body[0] == BUTTON_START:
+        load_node_macs()
         start_cycle()
+        
     elif body[0] == BUTTON_ABORT:
         station = node_for('station')
         if station is not None:
@@ -90,7 +99,7 @@ def on_done(ctx, result, error):
         return
     
     if step == 'qr':
-        plant = plant_for_qr(result)
+        plant = handler.api('GET', f'/plants/qr/{result}')
         if plant is None:
             finish(ctx, f"no plant with qr code {result!r}")
             return
@@ -111,9 +120,7 @@ def on_done(ctx, result, error):
         finish(ctx, "done")
 
 if __name__ == '__main__':
-    plants = handler.get_plants(SERIE_ID)
-    print(f"Loaded {len(plants)} plants from series {SERIE_ID}")
-    
+    load_node_macs()
     handler.on_button = on_button
     handler.on_done = on_done
     handler.on_node = on_node
