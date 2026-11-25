@@ -67,9 +67,13 @@ def request(ctx, role, step, command, params=(0, 0)):
 def confirm(ctx, ready_code, resume):
     """Send a ReadyCode to the inout node display and wait for button press."""
     global _pending
+    if(not node_for('inout')):
+        print("Input output node (inout) is not connected")
+        return
+    
     inout = node_for('inout')
     if inout is not None:
-        handler.send_request(inout, 'display', (ready_code, 0))
+        handler.send_request(inout, 'display', (3, ready_code))
     _pending = {'ctx': ctx, 'resume': resume}
 
 def start_cycle():
