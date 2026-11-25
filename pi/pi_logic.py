@@ -2,6 +2,8 @@
 """Decides what to do: reacts to buttons and node answers, sends the requests.
 Saving data is done by pi_serial_handler.py."""
 
+import time
+import threading
 import pi_serial_handler as handler
 
 _pending = None  # {'ctx': ctx, 'resume': callable} — set while waiting for confirmation
@@ -62,6 +64,9 @@ def request(ctx, role, step, command, params=(0, 0)):
         return
     
     ctx['step'] = step
+    ctx['role'] = role
+    ctx['command'] = command
+    ctx['params'] = params
     handler.send_request(node_id, command, params, ctx=ctx, timeout=TIMEOUTS[step])
 
 def confirm(ctx, ready_code, resume):
@@ -109,10 +114,30 @@ def on_button(node_id, body):
     else:
         print(f"Unknown button {body[0]}")
 
+def _retry_image(ctx, delay=3):
+    """Wait, then re-send the image request. Runs in a background thread."""
+    def _do():
+        time.sleep(delay)
+        node_id = node_for('camera')
+        if node_id is None:
+            finish(ctx, "camera node is not connected")
+            return
+        handler.send_request(node_id, 'send_image', (0, 0), ctx=ctx, timeout=TIMEOUTS['image'])
+    threading.Thread(target=_do, daemon=True).start()
+
 def on_done(ctx, result, error):
     global _pending
     step = ctx['step']
 
+    if error == 'error:4' and step == 'water':
+        #try again later if the node is busy
+        request(ctx, ctx['role'], 'image', ctx['command'], ctx['params'])
+        return
+
+    if error == 'error:4' and step == 'image':
+        _retry_image(ctx)
+        return
+    
     if error:
         _pending = None
         # never leave the pump running if we lost track of it
