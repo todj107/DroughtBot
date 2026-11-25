@@ -87,11 +87,14 @@ def process_chunk(frame):
     
     parts = active_transfers[key]['parts']
     parts[frame['chunk_index']] = frame['body']
-    
+    print(f"chunk {frame['chunk_index'] + 1}/{frame['chunk_count']} ({len(frame['body'])} bytes)")
+
     # all chunks received?
     if len(parts) == frame['chunk_count']:
         del active_transfers[key]
-        return b''.join(parts[i] for i in range(frame['chunk_count']))
+        assembled = b''.join(parts[i] for i in range(frame['chunk_count']))
+        print(f"transfer complete: {len(assembled)} bytes total")
+        return assembled
     
     return None
 
