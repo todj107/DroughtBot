@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 import models, schemas
 from database import get_db
@@ -242,6 +243,20 @@ def update_image(
     db.refresh(db_image)
 
     return db_image
+
+@app.get("/images/{image_id}", response_model=schemas.ImageOut)
+def read_image(image_id: int, db: Session = Depends(get_db)):
+    db_image = db.get(models.Image, image_id)
+    if not db_image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return db_image
+
+@app.get("/images/{image_id}/file")
+def read_image_file(image_id: int, db: Session = Depends(get_db)):
+    db_image = db.get(models.Image, image_id)
+    if not db_image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return Response(content=db_image.image_data, media_type="image/jpeg")
 
 @app.delete("/images/{image_id}", status_code=204)
 def delete_image(image_id: int, db: Session = Depends(get_db)):

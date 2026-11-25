@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image viewer</title>
+    <link rel="stylesheet" type="text/css" href="/index.css">
+</head>
+<body>
+    <h1 id="caption">Image</h1>
+    <div class="content">
+        <div id="image_section">
+            <img id="image_display" alt="plant image" style="max-width:100%">
+            <p><a id="image_link" href="#">Download raw</a></p>
+        </div>
+        <div>
+            <h2>Raw base64 data</h2>
+            <textarea id="raw_data" rows="8" style="width:100%;font-size:0.75em" readonly></textarea>
+        </div>
+        <p id="response"></p>
+    </div>
+    <script type="module" src="/image.js"></script>
+</body>
+</html>
