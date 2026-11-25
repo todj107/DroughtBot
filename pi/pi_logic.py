@@ -112,7 +112,11 @@ def on_button(node_id, body):
 def on_done(ctx, result, error):
     global _pending
     step = ctx['step']
-
+    if(error == 4):
+        # Error code 4 indicates the node is busy, so we just return and wait.
+        print(f"Node is busy for step {step}, waiting...")
+        return
+    
     if error:
         _pending = None
         # never leave the pump running if we lost track of it
