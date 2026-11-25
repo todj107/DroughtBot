@@ -157,6 +157,7 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
 
     else if (strcmp(command, "send_image") == 0) {
         sendOk(requestId);
+        busy = true;
         
         Serial.println("Take and send image!");
 
@@ -169,6 +170,7 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
         if (!sendData(test_image_jpeg, test_image_jpeg_len)) {
             Serial.println("Error: Response value failed to send.");
         }
+        busy = false;
     }
 
     else {
