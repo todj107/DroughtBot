@@ -1,9 +1,10 @@
 #include <Arduino.h>
-
+#include "esp_system.h"
 #include "scale_controller.h"
 #include "pump_controller.h"
 #include "node.h"
 #include "QR_scanner.h"
+#include "espnow_protocol.h"
 
 // Pins
 #define PUMP_PIN (uint8_t)2
@@ -14,16 +15,6 @@
 
 // Internal error codes
 #define PROCESS_ABORTED -10
-
-// Error codes to hub (CHANGE ERROR CODES TO CORRECT ONE)
-#define INCORRECT_PARAMS 0
-#define QR_SCANNER_ERROR 0
-#define UNKNOWN_COMMAND 0
-#define PUMP_NOT_READY 0
-#define SCALE_NOT_READY 0
-#define NODE_BUSY 0
-#define ABORTED_PROCESS 0
-
 
 ScaleController scale;
 PumpController pump(PUMP_PIN);
@@ -48,14 +39,18 @@ void setup() {
         Serial.println("Error: Initilizing Scale failed.");
     }
     if(!pump.begin()) {
-        Serial.println("Error: Initilizing Pump failed.");
+        Serial.println("Error: Initializing Pump failed.");
+    }
+    if (!espnowBegin()) {
+        Serial.println("Error: Initializing espnow radio failed.");
+        delay(5000);
+        esp_restart();
     }
     // Start communication with hub
     if (!openCommunication()) {
-        Serial.println("Error: Initilizing communication failed.");
-        // What to do if it fails?
+        Serial.println("Error: Initializing communication failed.");
         delay(5000);
-        return;
+        esp_restart();
     }
 
     // Register nodes own handler function
@@ -71,7 +66,7 @@ void loop() {
 /**
  * @brief When a request is registered, the following structure should be followed:
  * 1) Decode commande to a known task,
- * 2) Send conformation to hub that task have been received,
+ * 2) Send confirmation to hub that task have been received,
  * 3) Preform the task,
  * 4) Send task data to the hub.
  * 
@@ -85,8 +80,10 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
     if (strcmp(command, "abort") == 0) {
         sendOk(requestId);
         // Stop the pump right away
-        abortRequested = true;
-        pump.stop();              
+        if (busy) {
+            abortRequested = true;
+            pump.stop();     
+        }         
         return;
     }
     if (busy) { 
@@ -122,6 +119,7 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
         char qr_string[QR_BUFFER_SIZE];
         if (!qr.get_qrcode(qr_string)) {
             sendError(requestId, QR_SCANNER_ERROR);
+            return;
         }
 
         if (!sendResponseString(requestId, qr_string)) {
@@ -157,6 +155,7 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
         float end_weight = waterProcess(target_weight);
         if (end_weight == PROCESS_ABORTED) {
             sendError(requestId, ABORTED_PROCESS);
+            return;
         }
         busy = false;
 

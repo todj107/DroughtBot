@@ -22,13 +22,6 @@
  *      - 2: ca 15px
  */
 
-// Need to change this class. 
-// It should print given message on display, and wrap if the message is to long.
-// Maybe some labels to the buttons. 
-// Maybe some meaningfull header, like status or which process it is on.
-// Most of the code right now is unusable.
-// Want a clear_header(), clear_message(), set_button(1, 2 or 3). Or similar.
-
 Display::Display(){
     bus = new Arduino_HWSPI(
         LCD_DC, LCD_CS, LCD_SCK, LCD_MOSI
@@ -79,23 +72,6 @@ void Display::set_header(char *text) {
     gfx->print(text);
 }
 
-// void Display::set_line(int line, char *text)
-// {
-//     if (line < 0 || line >= 4)
-//         return;
-
-//     int y = 30 + line * 24;
-
-//     // Clear previous text
-//     gfx->fillRect(0, y, 160, 24, BLACK);
-
-//     gfx->setFont(&FreeSans9pt7b);
-//     gfx->setTextSize(1);
-//     gfx->setTextColor(WHITE);
-//     gfx->setCursor(3, y + 17);
-//     gfx->println(text);
-// }
-
 void Display::set_message(char *text) {
     clear_message();
 
@@ -121,11 +97,3 @@ void Display::set_button(int btn, char *text) {
     gfx->setCursor(pos_x, pos_y);
     gfx->print(text);
 }
-
-// void Display::test_colors()
-// {
-//     gfx->fillRect(0, 5, 50, 30, RED);
-//     gfx->fillRect(55, 5, 50, 30, GREEN);
-//     gfx->fillRect(110, 5, 50, 30, BLUE);
-//     delay(200);
-// }

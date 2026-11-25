@@ -1,22 +1,15 @@
 #include <Arduino.h>
 #include "esp_system.h"
-
-
 #include "node.h"
 #include "app_config.h"
 #include "camera.h"
 #include "SpotlightController.h"
-
+#include "espnow_protocol.h"
 
 // PINS
 #define LIGHT_EN_PIN 43
 
-// EXTERNAL ERROR CODES
-#define UNKNOWN_COMMAND 255
-#define CAMERA_INIT_FAILED 0
-
 SpotlightController light;
-
 static bool camera_init_fail = false;
 
 // Functions
@@ -34,11 +27,18 @@ void setup() {
         camera_init_fail = true;
     }
 
-    if (!openCommunication()) {
-        Serial.println("Initilizing communication failed.");
+    if (!espnowBegin) {
+        Serial.println("Initializing espnow radio failed");
         // Try again in 5s
         delay(5000);
-        return;
+        esp_restart();
+    }
+
+    if (!openCommunication()) {
+        Serial.println("Initializing communication failed");
+        // Try again in 5s
+        delay(5000);
+        esp_restart();
     }
 
     // Register nodes own handler function
@@ -55,32 +55,34 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
 
     if (camera_init_fail) {
         sendError(requestId, CAMERA_INIT_FAILED);
+        return;
     }
 
     if (strcmp(command, "restart_esp") == 0) {
         sendOk(requestId);
+        delay(200);
         esp_camera_deinit();
         esp_restart();
     }
     else if (strcmp(command, "send_image") == 0) {
         sendOk(requestId);
-        
-        // Discard first images
-        warm_up((uint8_t)3);
 
         // Flash on
         light.on();
-        delay(500);
+        delay(100);
+        warm_up((uint8_t)3);
         // Take a picture
         camera_fb_t* fb = esp_camera_fb_get();
+        if (!fb) {
+            sendError(requestId, IMAGE_CAPTURE_FAILED);
+            return;
+        }
         // Flash off
-        delay(500);
         light.off();
         
         // Send the image
-        if (!sendResponseData(requestId, fb->buf, fb->len)) {
+        if (!sendData(fb->buf, fb->len)) {
             Serial.println("Error: Sending image failed.");
-            return;
         }
 
         // Return/remove picture

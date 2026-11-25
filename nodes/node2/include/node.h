@@ -17,5 +17,5 @@ bool sendResponseValue(uint32_t requestId, uint32_t value);
 bool sendError(uint32_t requestId, uint8_t code);
 bool sendResponseData(uint32_t requestId, const uint8_t* data, size_t length);
 bool sendResponseString(uint32_t requestId, const char* str);
-
-
+bool sendButton(ButtonId id);
+bool espnowBegin();

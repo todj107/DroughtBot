@@ -183,7 +183,7 @@ bool sendResponseData(uint32_t requestIdToRespond, const uint8_t* data, size_t l
     return esp_now_send(hubAddress, packet, sizeof(ResponseMessage)) == ESP_OK;
 }
 
-//internal helper, not exposed in node.h. NOTE NEED TO EXPOSE FOR QRCODE!
+//internal helper, not exposed in node.h
 bool sendResponseString(uint32_t requestId, const char* str) {
     if (str == nullptr) {
         return false;
@@ -205,32 +205,6 @@ bool sendError(uint32_t requestId, uint8_t code) {
     char buf[20];
     snprintf(buf, sizeof(buf), "error:%u", (unsigned)code);
     return sendResponseString(requestId, buf);
-}
-
-void setup() {
-    Serial.begin(115200);
-    delay(1000);
-    Serial.println("\nESP-NOW NODE");
-
-    //set up the radio and listen for hub replies
-    radioReady = initializeRadio();
-    if (!radioReady) {
-        Serial.println("ESP-NOW radio initialization failed");
-        return;
-    }
-
-    const esp_err_t result = esp_now_register_recv_cb(onReceive);
-    if (result != ESP_OK) {
-        radioReady = false;
-        Serial.printf("Receive callback registration failed: %s\n",
-                      esp_err_to_name(result));
-        return;
-    }
-
-    WiFi.macAddress(nodeAddress);
-    Serial.printf("Node ready; MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
-                  nodeAddress[0], nodeAddress[1], nodeAddress[2],
-                  nodeAddress[3], nodeAddress[4], nodeAddress[5]);
 }
 
 bool openCommunication() {
@@ -381,15 +355,29 @@ bool closeCommunication() {
     return false;
 }
 
-void loop() {
+bool sendButton(ButtonId id) {
+    if (!sessionOpen) return false;
+    const uint8_t packet[2] = {static_cast<uint8_t>(MessageType::Button),
+                               static_cast<uint8_t>(id)};
+    return esp_now_send(hubAddress, packet, sizeof(packet)) == ESP_OK;
+}
+
+bool espnowBegin() {
+    //set up the radio and listen for hub replies
+    radioReady = initializeRadio();
     if (!radioReady) {
-        delay(1000);
-        return;
+        Serial.println("ESP-NOW radio initialization failed");
+        return false;
     }
 
-    if (reconnectEnabled && !sessionOpen) {
-        openCommunication();
-    } else {
-        delay(100);
+    const esp_err_t result = esp_now_register_recv_cb(onReceive);
+    if (result != ESP_OK) {
+        radioReady = false;
+        Serial.printf("Receive callback registration failed: %s\n",
+                      esp_err_to_name(result));
+        return false;
     }
+
+    WiFi.macAddress(nodeAddress);
+    return true;
 }
