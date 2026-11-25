@@ -5,6 +5,109 @@
 #include <esp_now.h>
 #include <esp_wifi.h>
 
+enum StatusCode : uint8_t {
+    STATUS_ERROR = 1,
+    STATUS_RUNNING = 2,
+    STATUS_READY = 3,
+};
+
+enum ErrorCode : uint8_t {
+    QR_SCANNER_ERROR = 1,
+    PUMP_NOT_READY = 2,
+    SCALE_NOT_READY = 3,
+    NODE_BUSY = 4,
+    ABORTED_PROCESS = 5,
+    CAMERA_INIT_FAILED = 6,
+    UNKNOWN_COMMAND = 7,
+    INCORRECT_PARAMS = 8,
+    DISPLAY_INIT_FAILED = 9,
+    IMAGE_CAPTURE_FAILED = 10,
+}; // enum ErrorCode
+
+enum ReadyCode : uint8_t {
+    START_PROCESS = 1,
+    START_WATERING = 2,
+    START_IMAGE = 3,
+}; 
+
+enum RunningCode : uint8_t {
+    RUNNING_WATERING = 1,
+    RUNNING_QR_SCALE = 2,
+    RUNNING_IMAGE = 3,
+};
+
+namespace DisplayMessages {
+// Error code messages
+inline char *error(uint8_t ERROR_CODE) {
+    switch (ERROR_CODE) {
+    case QR_SCANNER_ERROR:
+        return "ERROR: Unable to obtain QR-code";
+
+    case PUMP_NOT_READY:
+        return "ERROR: Pump initialization failed";
+
+    case SCALE_NOT_READY:
+        return "ERROR: Scale initialization failed";
+
+    case NODE_BUSY:
+        return "WARNING: Node is busy, command ignored.";
+
+    case ABORTED_PROCESS:
+        return "WARNING: Process have been aborted.";
+
+    case CAMERA_INIT_FAILED:
+        return "ERROR: Camera initialization failed";
+
+    case IMAGE_CAPTURE_FAILED:
+        return "ERROR: Failed to capture an image";
+
+    case DISPLAY_INIT_FAILED:
+        return "ERROR: Display initialization failed";
+
+    case UNKNOWN_COMMAND:
+        return "WARNING: Unknown command";
+
+    case INCORRECT_PARAMS:
+        return "ERROR: Incorrect params recieved";
+
+    default:
+        return "Invalid ERROR_CODE.";
+    }
+}
+
+inline char *ready(uint8_t READY_CODE) {
+    switch (READY_CODE) {
+    case START_PROCESS:
+        return "Place the plant on the scale and press OK when ready";
+
+    case START_WATERING:
+        return "Put the pump-handle inside the soil and press OK when ready";
+
+    case START_IMAGE:
+        return "Remove the pump-handle and press OK when ready to take image of the plant";
+    
+    default:
+        return "Invalid ready code";
+    }
+}
+
+inline char *running(uint8_t RUNNING_CODE) {
+    switch (RUNNING_CODE) {
+    case RUNNING_WATERING:
+        return "Watering process";
+    
+    case RUNNING_QR_SCALE:
+        return "Reading QR-code and taking initial weight";
+
+    case RUNNING_IMAGE:
+        return "Taking and sending image";
+
+    default:
+        return "Invalid running code";
+    }
+}
+}// namespace DisplayMessages
+
 namespace EspNowProtocol {
 
 constexpr uint8_t kChannel = 1;
@@ -25,6 +128,11 @@ enum class MessageType : uint8_t {
     RequestResponse = 11,
     NodeAssignment = 12,
     Button = 13,    // [type][body...], needs no session and no request id
+};
+
+enum class ButtonId : uint8_t {
+    Abort = 1,   // avoid 0 so a zeroed buffer can't look like a press
+    Start = 2,
 };
 
 #pragma pack(push, 1)
