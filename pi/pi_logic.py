@@ -119,9 +119,17 @@ def on_done(ctx, result, error):
 
     if(error == 'error:4'): 
         # Error code 4 indicates the node is busy, so we just return and wait.
-        print(f"Node is busy for step {step}, waiting...")
-        time.sleep(4)
-        request(ctx, ctx['role'], step, ctx['command'], ctx['params'])
+        
+        if(step == 'water'):
+            print(f"Node is busy for step {step}, waiting...")
+            time.sleep(4)
+            request(ctx, ctx['role'], 'image', ctx['command'], ctx['params'])
+        
+        if(step == 'image'):
+            print(f"Node is busy for step {step}, waiting...")
+            time.sleep(4)
+            finish(ctx, "done")
+        
         return
     
     if error:
