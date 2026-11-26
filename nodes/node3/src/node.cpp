@@ -24,10 +24,13 @@ bool reconnectEnabled = true;
 uint32_t nextTransferId = 1;
 
 RequestHandler userRequestHandler = nullptr;
-volatile bool requestReceived = false;
-volatile uint32_t requestId = 0;
-char requestCommand[256];
-uint8_t requestParams[kRequestParamBytes];
+struct PendingRequest {
+    uint32_t id;
+    char command[32];
+    uint8_t params[kRequestParamBytes];
+};
+constexpr UBaseType_t kRequestQueueLength = 4;
+QueueHandle_t requestQueue = nullptr;
 
 void onReceive(const esp_now_recv_info_t* senderInfo,
                const uint8_t* data, int length) {
@@ -96,23 +99,24 @@ void onReceive(const esp_now_recv_info_t* senderInfo,
         RequestMessage* req = reinterpret_cast<RequestMessage*>(
             const_cast<uint8_t*>(data));
         
-        requestId = req->requestId;
-        uint8_t commandLen = req->commandLength;
-        
+        const uint8_t commandLen = req->commandLength;
         size_t offset = sizeof(RequestMessage);
-        
-        //ignore requests that are too short for command + params
-        if (length < offset + commandLen + kRequestParamBytes) {
+        PendingRequest item = {};
+
+        //ignore requests that are too short or have a too long command
+        if (commandLen >= sizeof(item.command) ||
+            length < offset + commandLen + kRequestParamBytes) {
             return;
         }
-        
-        memcpy(requestCommand, data + offset, commandLen);
-        requestCommand[commandLen] = '\0';
+
+        item.id = req->requestId;
+        memcpy(item.command, data + offset, commandLen);
         offset += commandLen;
-        
-        memcpy(requestParams, data + offset, kRequestParamBytes);
-        
-        requestReceived = true;
+        memcpy(item.params, data + offset, kRequestParamBytes);
+
+        if (requestQueue != nullptr) {
+            xQueueSend(requestQueue, &item, 0);
+        }
         return;
     }
 }
@@ -142,16 +146,6 @@ void waitBeforeRetry(uint32_t& window) {
     window = nextBackoffWindow(window);
 }
 
-void processRequest() {
-    if (!requestReceived || userRequestHandler == nullptr) {
-        return;
-    }
-
-    //the handler sends its own response (sendOk, sendResponseValue, ...)
-    userRequestHandler(requestId, requestCommand, requestParams);
-    
-    requestReceived = false;
-}
 }
 
 uint8_t getNodeId() {
@@ -163,8 +157,15 @@ void setRequestHandler(RequestHandler handler) {
 }
 
 void handleRequest() {
-    if (requestReceived) {
-        processRequest();
+    if (userRequestHandler == nullptr || requestQueue == nullptr) {
+        return;
+    }
+
+    //the request is taken out of the queue before the handler runs, so a
+    //handler that calls handleRequest() again only sees newer requests
+    PendingRequest item;
+    if (xQueueReceive(requestQueue, &item, 0) == pdTRUE) {
+        userRequestHandler(item.id, item.command, item.params);
     }
 }
 
@@ -355,7 +356,7 @@ bool closeCommunication() {
     return false;
 }
 
-bool sendButton(ButtonId id) {
+bool sendButton(EspNowProtocol::ButtonId id) {
     if (!sessionOpen) return false;
     const uint8_t packet[2] = {static_cast<uint8_t>(MessageType::Button),
                                static_cast<uint8_t>(id)};
@@ -363,6 +364,11 @@ bool sendButton(ButtonId id) {
 }
 
 bool espnowBegin() {
+    requestQueue = xQueueCreate(kRequestQueueLength, sizeof(PendingRequest));
+    if (requestQueue == nullptr) {
+        return false;
+    }
+
     //set up the radio and listen for hub replies
     radioReady = initializeRadio();
     if (!radioReady) {

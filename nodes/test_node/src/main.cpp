@@ -8,7 +8,6 @@
 
 static volatile bool abortRequested = false;
 static bool busy = false;
-const uint8_t button_start = 1;
 
 // Functions
 void commandHandler(uint32_t requestId, const char* command, const uint8_t* params);
@@ -83,8 +82,7 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
             Serial.println(DisplayMessages::ready(params[1]));
 
             // Simulate OK press, but not after a final message
-            if (params[1] != SERIES_DONE && params[1] != CYCLE_DONE &&
-                params[1] != ENOUGH_WATER) {
+            if (params[1] != SERIES_DONE && params[1] != CYCLE_DONE && params[1] != ENOUGH_WATER) {
                 delay(2000);
                 sendButton(EspNowProtocol::ButtonId::Start);
             }

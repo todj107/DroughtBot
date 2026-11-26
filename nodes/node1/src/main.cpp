@@ -75,22 +75,25 @@ void loop() {
  * @param params Structure: [uint8_t, uint8_t]. Can contain data needed.
  */
 void commandHandler(uint32_t requestId, const char* command, const uint8_t* params) {
-    Serial.println("Request arrived");                  // DEBUGG (REMOVE LATER)
-
     if (strcmp(command, "abort") == 0) {
+        Serial.println("Work aborted"); 
         sendOk(requestId);
+
         // Stop the pump right away
         if (busy) {
             abortRequested = true;
             pump.stop();     
-        }         
+        }        
         return;
     }
+
     if (busy) { 
-        // Reject other commands while pumping                 
+        // Reject other commands while pumping
+        Serial.println("Node is busy");
         sendError(requestId, NODE_BUSY);
         return;
     }
+
     if (strcmp(command, "restart_esp") == 0) {
         sendOk(requestId);
         delay(200);
@@ -125,6 +128,7 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
         if (!sendResponseString(requestId, qr_string)) {
             Serial.println("Error: Response string failed to send.");
         }
+        return;
     }
 
     else if (strcmp(command, "read_scale") == 0) {
@@ -138,6 +142,7 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
         if (!sendResponseValue(requestId, reading)) {
             Serial.println("Error: Response value failed to send.");
         }
+        return;
     }
 
     else if(strcmp(command, "water_process") == 0) {
@@ -152,20 +157,27 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
         }
 
         busy = true;
+        abortRequested = false;
         float end_weight = waterProcess(target_weight);
         if (end_weight == PROCESS_ABORTED) {
             sendError(requestId, ABORTED_PROCESS);
             return;
         }
         busy = false;
+        if (end_weight == INTERNAL_PROCESS_ABORTED) {
+            sendError(requestId, ABORTED_PROCESS);
+            return;
+        }
 
         if (!sendResponseValue(requestId, end_weight)) {
             Serial.println("Error: Response value failed to send.");
         }
+        return;
     }
     else {
         //unknown command
         sendError(requestId, UNKNOWN_COMMAND);
+        return;
     }
 }
 

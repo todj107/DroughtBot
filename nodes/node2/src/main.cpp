@@ -36,7 +36,6 @@ void setup() {
 
     if (!openCommunication()) {
         Serial.println("Initializing communication failed");
-        // Try again in 5s
         delay(5000);
         esp_restart();
     }
@@ -51,10 +50,10 @@ void loop() {
 }
 
 void commandHandler(uint32_t requestId, const char* command, const uint8_t* params) {
-    Serial.println("Request arrived");                  // DEBUGG (REMOVE LATER)
-
-    if (camera_init_fail) {
-        sendError(requestId, CAMERA_INIT_FAILED);
+    if (strcmp(command, "abort") == 0) {
+        sendOk(requestId);
+        // Abort work (does nothing right now)
+        Serial.println("Work aborted");
         return;
     }
 
@@ -64,6 +63,12 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
         esp_camera_deinit();
         esp_restart();
     }
+    
+    if (camera_init_fail) {
+        sendError(requestId, CAMERA_INIT_FAILED);
+        return;
+    }
+
     else if (strcmp(command, "send_image") == 0) {
         sendOk(requestId);
 
@@ -88,10 +93,13 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
         // Return/remove picture
         // Needs to be done before taking another picture
         esp_camera_fb_return(fb);
+
+        return;
     }
     else {
         //unknown command
         sendError(requestId, UNKNOWN_COMMAND);
+        return;
     }
 }
 

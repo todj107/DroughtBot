@@ -7,6 +7,7 @@ import requests
 import serial
 import struct
 import time
+import traceback
 
 PORT = '/dev/ttyACM0'
 BAUD = 115200
@@ -45,6 +46,7 @@ nodes = {}
 on_button = None    # callback(node_id, body: bytes)
 on_done = None      # callback(ctx, result, error)
 on_node = None      # callback(node_id, mac, connected)
+on_tick = None      # callback(), called on every turn of the main loop
 
 ############ Framing ############
 
@@ -160,7 +162,7 @@ def save_image(ctx, body):
 
 SAVERS = {
     'qr': save_qr,
-    'register': save_qr,    
+    'register': save_qr,   # same decoding; brain.py saves it to the plant
     'scale': save_scale,
     'water': save_water,
     'image': save_image,
@@ -230,7 +232,8 @@ def handle_node_message(request_id, body):
     
     try:
         result = SAVERS[ctx['step']](ctx, body)
-    except (ValueError, IndexError, UnicodeDecodeError, RuntimeError) as e:
+    except Exception as e:  # a bad answer must not stop the script
+        traceback.print_exc()
         on_done(ctx, None, f"{ctx['step']}: {e}")
         return
     
@@ -285,6 +288,8 @@ def poll():
         handle_frame(frame)
     
     check_timeouts()
+    if on_tick is not None:
+        on_tick()
 
 def run(port=PORT):
     global ser
