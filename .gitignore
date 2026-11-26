@@ -67,3 +67,6 @@ lib/
 secrets.h
 
 .venv
+
+# Ignore db in pi
+db.db
