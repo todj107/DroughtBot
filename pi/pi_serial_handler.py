@@ -160,6 +160,7 @@ def save_image(ctx, body):
 
 SAVERS = {
     'qr': save_qr,
+    'register': save_qr,
     'scale': save_scale,
     'water': save_water,
     'image': save_image,

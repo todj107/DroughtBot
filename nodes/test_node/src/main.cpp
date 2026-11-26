@@ -41,7 +41,8 @@ void setup() {
 
     Serial.println("Simulate button press in 5s");
     delay(5000);
-    sendButton(EspNowProtocol::ButtonId::Start); // Add this in node 3
+    // sendButton(EspNowProtocol::ButtonId::Start);
+    sendButton(EspNowProtocol::ButtonId::Series);
 }
 
 void loop() {
@@ -93,6 +94,16 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
         return;
     }
 
+    if (strcmp(command, "series_info") == 0) {
+        sendOk(requestId);
+        Serial.printf("Series %u has %u plants. Press OK to start\n", params[0], params[1]);
+ 
+        // Simulate OK press
+        delay(2000);
+        sendButton(EspNowProtocol::ButtonId::Start);
+        return;
+    }
+
     else if (busy) { 
         // Reject other commands while pumping
         sendError(requestId, NODE_BUSY);
@@ -120,7 +131,7 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
         if (++qrCount > 1) {
             snprintf(qr_string, sizeof(qr_string), "test_qr_%u", qrCount);
         }
-        
+
         if (!sendResponseString(requestId, qr_string)) {
             Serial.println("Error: Response string failed to send.");
         }
