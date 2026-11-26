@@ -28,6 +28,9 @@ enum ReadyCode : uint8_t {
     START_PROCESS = 1,
     START_WATERING = 2,
     START_IMAGE = 3,
+    NEXT_PLANT = 4,
+    SERIES_DONE = 5,
+    RETRY_QR = 6,
 }; 
 
 enum RunningCode : uint8_t {
@@ -79,13 +82,22 @@ inline char *ready(uint8_t READY_CODE) {
     switch (READY_CODE) {
     case START_PROCESS:
         return "Place the plant on the scale and press OK when ready";
-
+ 
     case START_WATERING:
         return "Put the pump-handle inside the soil and press OK when ready";
-
+ 
     case START_IMAGE:
         return "Remove the pump-handle and press OK when ready to take image of the plant";
-    
+ 
+    case NEXT_PLANT:
+        return "QR-code saved. Show the next plant and press OK";
+ 
+    case SERIES_DONE:
+        return "All plants in the series are registered";
+ 
+    case RETRY_QR:
+        return "QR-code not saved. Check the plant and press OK to retry";
+ 
     default:
         return "Invalid ready code";
     }
@@ -133,6 +145,7 @@ enum class MessageType : uint8_t {
 enum class ButtonId : uint8_t {
     Abort = 1,   // avoid 0 so a zeroed buffer can't look like a press
     Start = 2,
+    Series = 3,
 };
 
 #pragma pack(push, 1)

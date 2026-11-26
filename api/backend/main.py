@@ -21,7 +21,7 @@ app = FastAPI(title="DB API")
 
 ################### Series ##################################
 # Create a Serie
-@app.post("/series/", response_model=schemas.SerieOut)
+@app.post("/series", response_model=schemas.SerieOut)
 def create_serie(serie: schemas.SerieBase, db: Session = Depends(get_db)):
     db_serie = models.Serie(
         name=serie.name
@@ -33,7 +33,7 @@ def create_serie(serie: schemas.SerieBase, db: Session = Depends(get_db)):
     return db_serie
 
 # Get multiple Series
-@app.get("/series/", response_model=list[schemas.SerieOut])
+@app.get("/series", response_model=list[schemas.SerieOut])
 def read_series(
             skip: int = 0, 
             limit: int = 100, 
@@ -41,6 +41,14 @@ def read_series(
         ):
     db_series = db.query(models.Serie).offset(skip).limit(limit).all()
     return db_series
+
+# Get latest series
+@app.get("/series/latest", response_model=schemas.SerieOut)
+def read_latest_series(db: Session = Depends(get_db)):
+    db_serie = db.query(models.Serie).order_by(models.Serie.id.desc()).first()
+    if db_serie is None:
+        raise HTTPException(status_code=404, detail="No series found")
+    return db_serie
 
 # Update a Serie
 @app.patch("/series/{serie_id}", response_model=schemas.SerieOut)
@@ -79,7 +87,7 @@ def delete_serie(serie_id: int, db: Session = Depends(get_db)):
 
 ################### Plants #####################################
 
-@app.post("/plants/", response_model=schemas.PlantOut)
+@app.post("/plants", response_model=schemas.PlantOut)
 def create_plant(plant: schemas.PlantBase, db: Session = Depends(get_db)):
     # Check if qr_code already exsists
     if plant.qr_code is not None:
@@ -153,7 +161,7 @@ def delete_plant(plant_id: int, db: Session = Depends(get_db)):
 
 ###################### MEASUREMENTS #####################################
 
-@app.post("/measurements/", response_model=schemas.MeasurementsOut)
+@app.post("/measurements", response_model=schemas.MeasurementsOut)
 def create_measurement(measurement: schemas.MeasurementBase, db: Session = Depends(get_db)):
     db_measurement = models.Measurement(**measurement.model_dump())
     db.add(db_measurement)
@@ -205,7 +213,7 @@ def delete_measurement(measurement_id: int, db: Session = Depends(get_db)):
 
 ################### Image #####################################
 
-@app.post("/images/", response_model=schemas.ImageOut)
+@app.post("/images", response_model=schemas.ImageOut)
 def create_image(image: schemas.ImageBase, db: Session = Depends(get_db)):
     db_image = models.Image(**image.model_dump())
 

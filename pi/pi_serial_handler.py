@@ -129,7 +129,7 @@ def save_qr(ctx, body):
 
 def save_scale(ctx, body):
     start_weight = parse_value(body)
-    measurement = api('POST', '/measurements/', {
+    measurement = api('POST', '/measurements', {
         'plant_id': ctx['plant']['id'],
         'start_weight': start_weight,
         'water_added': None,
@@ -149,7 +149,7 @@ def save_water(ctx, body):
 
 def save_image(ctx, body):
     # pydantic's base64 alphabet is url-safe
-    image = api('POST', '/images/', {
+    image = api('POST', '/images', {
         'measurement_id': ctx['measurement_id'],
         'image_data': base64.urlsafe_b64encode(body).decode('ascii'),
     })

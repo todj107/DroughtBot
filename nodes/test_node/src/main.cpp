@@ -51,7 +51,7 @@ void loop() {
 
 
 void commandHandler(uint32_t requestId, const char* command, const uint8_t* params) {
-    Serial.println("Request arrived");
+    Serial.printf("[Request] %s\n", command);
     if (strcmp(command, "abort") == 0) {
         sendOk(requestId);
 
@@ -63,7 +63,7 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
     }
 
     if (strcmp(command, "display") == 0) {
-        Serial.println("Display:");
+        Serial.println("[Display]");
         if (!params[0]) {
             Serial.println("Invalid params");
             sendError(requestId, INCORRECT_PARAMS);
@@ -89,6 +89,8 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
             Serial.println("Running");
             Serial.println(DisplayMessages::running(params[1]));
         }
+
+        return;
     }
 
     else if (busy) { 
@@ -112,7 +114,13 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
 
         // Simulate qr-code
         delay(500);
-        const char *qr_string = "this_is_a_qrcode_string";
+        // New code every time, so each plant gets its own
+        static unsigned qrCount = 0;
+        char qr_string[32] = "this_is_a_qrcode_string";
+        if (++qrCount > 1) {
+            snprintf(qr_string, sizeof(qr_string), "test_qr_%u", qrCount);
+        }
+        
         if (!sendResponseString(requestId, qr_string)) {
             Serial.println("Error: Response string failed to send.");
         }
@@ -142,6 +150,7 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
         }
 
         busy = true;
+        abortRequested = false;
         float end_weight = waterProcessSimulation(target_weight);
         busy = false;
         if (end_weight == INTERNAL_PROCESS_ABORTED) {

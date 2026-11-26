@@ -17,14 +17,6 @@ async function get_measurements() {
         return;
     }
 
-    // for (const result of results) {
-    //     const link = document.createElement("a");
-    //     link.className = "child";
-    //     // link.href = `./measurement.html#measurement_id=${result.id}`;
-    //     link.textContent = `ID: ${result.id} | Plant ID: ${result.plant_id} | Start weight: ${result.start_weight} | Water added: ${result.water_added} | Measured at: ${result.measured_at}`;
-    //     list.appendChild(link);
-    // }
-
     const table = document.createElement("table");
 
     const headRow = table.createTHead().insertRow();
@@ -39,7 +31,13 @@ async function get_measurements() {
         const row = tbody.insertRow();
 
         row.insertCell().textContent = result.plant_id;
-        row.insertCell().textContent = result.id
+
+        const nameCell = row.insertCell();
+        const link = document.createElement("a");
+        link.href = `./image.html?measurement_id=${result.id}`;
+        link.textContent = result.id;
+        nameCell.appendChild(link);
+
         row.insertCell().textContent = result.start_weight ?? "-";
         row.insertCell().textContent = result.water_added ?? "-";
         row.insertCell().textContent = result.measured_at ?? "-";

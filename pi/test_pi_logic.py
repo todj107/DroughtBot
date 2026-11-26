@@ -30,6 +30,7 @@ INOUT_MAC = None
 ROLE_MACS = {}
 
 # button body first byte
+BUTTON_OTHER = 3
 BUTTON_START = 2
 BUTTON_ABORT = 1
 
@@ -53,8 +54,8 @@ MAX_WATER = 255
 # seconds a node gets to deliver its result after its "ok"
 TIMEOUTS = {
     'qr': 60,
-    'scale': 120,
-    'water': 120,
+    'scale': 80,
+    'water': 240,
     'image': 240,
 }
 
@@ -118,6 +119,9 @@ def confirm(ctx, ready_code, resume):
     _pending = {'ctx': ctx, 'resume': resume}
     show(STATUS_READY, ready_code)
 
+def start_reading_series():
+    
+
 def start_cycle():
     global _pending, _cycle
     _cycle += 1
@@ -157,6 +161,10 @@ def on_button(node_id, body):
         if station is not None:
             handler.send_request(station, 'abort')
         show(STATUS_ERROR, ABORTED_PROCESS)
+
+    elif body[0] == BUTTON_OTHER:
+        if not _busy and _pending is None:
+            start_reading_series()
     else:
         print(f"Unknown button {body[0]}")
 

@@ -1,7 +1,7 @@
 import {create, update, deletes, read} from "./api.js";
 
 async function get_series() {
-    const results = await read("/series/");
+    const results = await read("/series");
 
     const list = document.getElementById("item_list");
     list.innerHTML = "";
@@ -57,7 +57,7 @@ async function create_serie() {
         return;
     }
 
-    const result = await create("/series/", { name });
+    const result = await create("/series", { name });
     if (!result) {
         response.textContent = "Could not create Serie";
         return;
