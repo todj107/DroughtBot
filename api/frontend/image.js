@@ -10,8 +10,9 @@ if (!measurementId) {
     document.getElementById("caption").textContent = `Image (measurement_id: ${measurementId})`;
 
     // read() returns null on error
-    const image = await read(`/measurements/${encodeURIComponent(measurementId)}/images`);
-
+    const results = await read(`/measurements/${encodeURIComponent(measurementId)}/images`);
+    const image = results[0];
+    console.log(image.id);
     if (!image) {
         response.textContent = "No image found.";
     } else {
