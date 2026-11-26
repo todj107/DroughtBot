@@ -10,9 +10,7 @@ if (!measurementId) {
     document.getElementById("caption").textContent = `Image (measurement_id: ${measurementId})`;
 
     // read() returns null on error
-    const results = await read(`/measurements/${encodeURIComponent(measurementId)}/images`);
-    // the path may give a list or a single image
-    const image = Array.isArray(results) ? results[0] : results;
+    const image = await read(`/measurements/${encodeURIComponent(measurementId)}/images`);
 
     if (!image) {
         response.textContent = "No image found.";
@@ -23,5 +21,7 @@ if (!measurementId) {
         const link = document.getElementById("image_link");
         link.href = fileUrl;
         link.textContent = "Download raw";
+
+        document.getElementById("raw_data").textContent = image.image_data;
     }
 }

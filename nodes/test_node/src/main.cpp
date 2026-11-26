@@ -82,8 +82,12 @@ void commandHandler(uint32_t requestId, const char* command, const uint8_t* para
             Serial.println("Ready");
             Serial.println(DisplayMessages::ready(params[1]));
 
-            delay(2000);
-            sendButton(EspNowProtocol::ButtonId::Start);
+            // Simulate OK press, but not after a final message
+            if (params[1] != SERIES_DONE && params[1] != CYCLE_DONE &&
+                params[1] != ENOUGH_WATER) {
+                delay(2000);
+                sendButton(EspNowProtocol::ButtonId::Start);
+            }
         }
 
         else if (params[0] == STATUS_RUNNING) {

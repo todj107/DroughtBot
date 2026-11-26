@@ -123,19 +123,16 @@ def confirm(ctx, ready_code, resume):
     _pending = {'ctx': ctx, 'resume': resume}
     show(STATUS_READY, ready_code)
 
-# --- database calls: ASSUMED endpoints, change these to match your API ---
-
+### Database calls for qr code - series reading
 def get_latest_series():
-    return handler.api('GET', '/series/latest')                    # {'id': 7, ...}
+    return handler.api('GET', '/series/latest')
 
 def get_series_plants(serie_id):
-    return handler.api('GET', f'/series/{serie_id}/plants')        # [{'id': 12, ...}, ...]
+    return handler.api('GET', f'/series/{serie_id}/plants')
 
 def save_qr_code(plant_id, qr_code):
     return handler.api('PATCH', f'/plants/{plant_id}', {'qr_code': qr_code})  # None = failed
-
-# --- registering the QR codes of a series ---
-
+  
 def start_reading_series():
     """Show series id and plant count, then wait for OK."""
     global _pending, _cycle
@@ -145,19 +142,22 @@ def start_reading_series():
         return
 
     series = get_latest_series()
-    plants = get_series_plants(series['id']) if series else None
+    if not series:
+        finish("No series found")
+        return
+    
+    plants = get_series_plants(series['id'])
     if not plants:
-        finish("no series with plants found")
+        finish("No plants in series found")
         return
 
     # each value is sent to the node as one byte
     if series['id'] > 255 or len(plants) > 255:
-        finish("series id or plant count does not fit in one byte")
+        finish("series id or plant count does not fit in one byte [NEED TO FIX THIS]")
         return
 
     _cycle += 1
-    ctx = {'cycle': _cycle, 'plants': sorted(plants, key=lambda p: p['id']),
-           'index': 0, 'seen': set()}
+    ctx = {'cycle': _cycle, 'plants': sorted(plants, key=lambda p: p['id']), 'index': 0, 'seen': set()}
     _pending = {'ctx': ctx, 'resume': lambda: read_plant_qr(ctx)}
     handler.send_request(inout, 'series_info', (series['id'], len(plants)))
 

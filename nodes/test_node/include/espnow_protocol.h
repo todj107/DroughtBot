@@ -10,7 +10,7 @@ enum StatusCode : uint8_t {
     STATUS_RUNNING = 2,
     STATUS_READY = 3,
 };
-
+ 
 enum ErrorCode : uint8_t {
     QR_SCANNER_ERROR = 1,
     PUMP_NOT_READY = 2,
@@ -22,8 +22,13 @@ enum ErrorCode : uint8_t {
     INCORRECT_PARAMS = 8,
     DISPLAY_INIT_FAILED = 9,
     IMAGE_CAPTURE_FAILED = 10,
+    PLANT_NOT_FOUND = 11,
+    NODE_NOT_CONNECTED = 12,
+    NODE_TIMEOUT = 13,
+    SYSTEM_ERROR = 14,
+    NO_SERIES = 15,
 }; // enum ErrorCode
-
+ 
 enum ReadyCode : uint8_t {
     START_PROCESS = 1,
     START_WATERING = 2,
@@ -31,53 +36,71 @@ enum ReadyCode : uint8_t {
     NEXT_PLANT = 4,
     SERIES_DONE = 5,
     RETRY_QR = 6,
+    CYCLE_DONE = 7,
+    ENOUGH_WATER = 8, // The plant did not need any water
 }; 
-
+ 
 enum RunningCode : uint8_t {
     RUNNING_WATERING = 1,
     RUNNING_QR_SCALE = 2,
     RUNNING_IMAGE = 3,
+    RUNNING_READ_QR = 4,
 };
-
+ 
 namespace DisplayMessages {
 // Error code messages
 inline char *error(uint8_t ERROR_CODE) {
     switch (ERROR_CODE) {
     case QR_SCANNER_ERROR:
         return "ERROR: Unable to obtain QR-code";
-
+ 
     case PUMP_NOT_READY:
         return "ERROR: Pump initialization failed";
-
+ 
     case SCALE_NOT_READY:
         return "ERROR: Scale initialization failed";
-
+ 
     case NODE_BUSY:
         return "WARNING: Node is busy, command ignored.";
-
+ 
     case ABORTED_PROCESS:
         return "WARNING: Process have been aborted.";
-
+ 
     case CAMERA_INIT_FAILED:
         return "ERROR: Camera initialization failed";
-
+ 
     case IMAGE_CAPTURE_FAILED:
         return "ERROR: Failed to capture an image";
-
+ 
     case DISPLAY_INIT_FAILED:
         return "ERROR: Display initialization failed";
-
+ 
     case UNKNOWN_COMMAND:
         return "WARNING: Unknown command";
-
+ 
     case INCORRECT_PARAMS:
         return "ERROR: Incorrect params recieved";
-
+ 
+    case PLANT_NOT_FOUND:
+        return "ERROR: No plant with this QR-code";
+ 
+    case NODE_NOT_CONNECTED:
+        return "ERROR: A node is not connected";
+ 
+    case NODE_TIMEOUT:
+        return "ERROR: A node did not answer in time";
+ 
+    case SYSTEM_ERROR:
+        return "ERROR: System error, check the Pi";
+ 
+    case NO_SERIES:
+        return "ERROR: No series with plants found";
+ 
     default:
         return "Invalid ERROR_CODE.";
     }
 }
-
+ 
 inline char *ready(uint8_t READY_CODE) {
     switch (READY_CODE) {
     case START_PROCESS:
@@ -98,11 +121,17 @@ inline char *ready(uint8_t READY_CODE) {
     case RETRY_QR:
         return "QR-code not saved. Check the plant and press OK to retry";
  
+    case CYCLE_DONE:
+        return "Done. Press OK to start the next plant";
+ 
+    case ENOUGH_WATER:
+        return "Plant needs no water. Press OK for the next plant";
+ 
     default:
         return "Invalid ready code";
     }
 }
-
+ 
 inline char *running(uint8_t RUNNING_CODE) {
     switch (RUNNING_CODE) {
     case RUNNING_WATERING:
@@ -110,10 +139,13 @@ inline char *running(uint8_t RUNNING_CODE) {
     
     case RUNNING_QR_SCALE:
         return "Reading QR-code and taking initial weight";
-
+ 
     case RUNNING_IMAGE:
         return "Taking and sending image";
-
+ 
+    case RUNNING_READ_QR:
+        return "Reading QR-code";
+ 
     default:
         return "Invalid running code";
     }
