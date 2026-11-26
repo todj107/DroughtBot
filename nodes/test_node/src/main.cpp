@@ -41,8 +41,8 @@ void setup() {
 
     Serial.println("Simulate button press in 5s");
     delay(5000);
-    // sendButton(EspNowProtocol::ButtonId::Start);
-    sendButton(EspNowProtocol::ButtonId::Series);
+    sendButton(EspNowProtocol::ButtonId::Start);
+    // sendButton(EspNowProtocol::ButtonId::Series);
 }
 
 void loop() {
