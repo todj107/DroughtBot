@@ -34,16 +34,19 @@ void loop()
     if (buttons.button1())
     {
         display.set_line(0, "Button 1 pressed");
+        Serial.println("Button 1 pressed");
     }
 
     if (buttons.button2())
     {
         display.set_line(1, "Button 2 pressed");
+        Serial.println("Button 2 pressed");
     }
 
     if (buttons.button3())
     {
         display.set_line(2, "Button 3 pressed");
+        Serial.println("Button 3 pressed");
     }
 
     delay(100);

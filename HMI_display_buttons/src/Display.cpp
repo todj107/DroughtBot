@@ -26,7 +26,19 @@ Display::Display()
 
 void Display::begin()
 {
-    gfx->begin();
+    pinMode(LCD_RST, OUTPUT);
+
+    digitalWrite(LCD_RST, HIGH);
+    delay(100);
+
+    digitalWrite(LCD_RST, LOW);
+    delay(100);
+
+    digitalWrite(LCD_RST, HIGH);
+    delay(200);
+
+    gfx->begin(1000000);
+    
     gfx->fillScreen(BLACK);
 
     test_colors();
