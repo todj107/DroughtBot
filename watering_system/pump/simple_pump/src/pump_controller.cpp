@@ -19,7 +19,7 @@ void PumpController::runFullSpeed() {
 }
 
 void PumpController::runSlowSpeed() {
-    pumpServo.writeMicroseconds(1200);
+    pumpServo.writeMicroseconds(1000);
 }
 
 void PumpController::stop() {

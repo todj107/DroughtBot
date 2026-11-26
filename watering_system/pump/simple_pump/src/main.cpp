@@ -15,7 +15,7 @@ void setup() {
 void loop() {
     Serial.println("Running full speed");
     pump.runFullSpeed();
-    delay(2000);
+    delay(30000);
 
     Serial.println("Running slow speed");
     pump.runSlowSpeed();
@@ -23,5 +23,5 @@ void loop() {
 
     Serial.println("Stopping");
     pump.stop();
-    delay(5000);
+    delay(100);
 }
