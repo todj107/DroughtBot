@@ -12,3 +12,7 @@ This code calibrates the scale, and lets the user test the calibration. A pre-ca
 ### Water stop
 
 This code lets the user specify how much water that should be added (in ml) and tells the user when that is achived.
+
+
+### Stabilizer
+Introduces a stabilizer class that stabilizes the scale readings, achiving a less flacuating result.

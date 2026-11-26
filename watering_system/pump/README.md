@@ -1,3 +1,3 @@
 # Pump
 
-Pump code + documentation
+Pump class with a simple test code.
