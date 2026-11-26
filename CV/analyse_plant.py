@@ -1,4 +1,10 @@
 """
+V 1.0
+
+Authors:
+    Oscar Årebäck
+    Qabass Aldoori
+
 Run info
 
 Required packages:
