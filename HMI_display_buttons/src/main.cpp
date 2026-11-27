@@ -25,6 +25,7 @@ void setup()
     display.set_line(2, "Water: 0ml");
     display.set_line(3, "Waiting...");
     delay(3000);
+    Serial.println("Setup complete");
 }
 
 void loop()
